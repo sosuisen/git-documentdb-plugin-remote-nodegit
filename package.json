@@ -1,0 +1,35 @@
+{
+  "name": "git-documentdb-plugin-remote-nodegit",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "types": "dist/main.d.ts",
+  "scripts": {
+    "build": "rm -rf dist/* && tsc --project src/tsconfig.json"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sosuisen/git-documentdb.git"
+  },
+  "keywords": [
+    "Git",
+    "GitHub",
+    "Offline-first",
+    "DocumentDB",
+    "Synchronization"
+  ],
+  "author": "Hidekazu Kubota",
+  "license": "MPL-2.0",
+  "bugs": {
+    "url": "https://github.com/sosuisen/git-documentdb/issues"
+  },
+  "homepage": "https://gitddb.com/",
+  "dependencies": {
+    "@sosuisen/nodegit": "^0.27.3",
+    "tslog": "^3.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^16.3.1",
+    "typescript": "^4.3.5"
+  }
+}
