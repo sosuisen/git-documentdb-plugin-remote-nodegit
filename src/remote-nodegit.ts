@@ -18,12 +18,19 @@ export function sleep (msec: number) {
   return new Promise(resolve => setTimeout(resolve, msec));
 }
 
+const type = 'remote';
+
+/**
+ * Clone
+ *
+ * @throws {@link Err.CannotConnectError}
+ * @throws {@link Err.CannotCloneRepositoryError}
+ */
 async function clone(
   workingDir: string,
   remoteOptions: RemoteOptions,
-
   logger?: Logger
-) {
+): Promise<void> {
   logger ??= new Logger({
     name: 'clone',
     minLevel: 'trace',
@@ -64,19 +71,17 @@ async function clone(
       throw new Err.CannotConnectError(retry, remoteOptions.remoteUrl, result.toString());
     }
 
-    return await nodegit.Clone.clone(remoteOptions.remoteUrl, workingDir, {
+    await nodegit.Clone.clone(remoteOptions.remoteUrl, workingDir, {
       fetchOpts: {
         callbacks: createCredential(remoteOptions),
       },
     }).catch(err => {
-      // Errors except CannotConnectError are handled in sync().
+      // Errors except CannotConnectError are handled in combine functions.
+      
       logger!.debug(`Error in cloning: ${remoteOptions.remoteUrl}, ` + err);
-      // The db will try to create remote repository in sync() if 'undefined' is returned.
-      return undefined;
+      throw new Err.CannotCloneRepositoryError(remoteOptions.remoteUrl!);
     });
   }
-
-  return undefined;
 }
 
-export { clone };
+export { clone, type };

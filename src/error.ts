@@ -36,6 +36,16 @@ export namespace Err {
     }
   }
 
+
+  /**
+   * @public
+   */
+  export class CannotCloneRepositoryError extends BaseError {
+    constructor(url: string) {
+      super(`Cannot clone repository: ${url}`);
+    }
+  }
+
   /**
   * @public
   */
@@ -66,7 +76,7 @@ export namespace Err {
   /**
    * @public
    */
-   export class InvalidSSHKeyPathError extends BaseError {
+  export class InvalidSSHKeyPathError extends BaseError {
     constructor () {
       const e = `Invalid SSH key path`;
       super(e);
@@ -76,7 +86,7 @@ export namespace Err {
   /**
    * @public
    */
-   export class RequestTimeoutError extends BaseError {
+  export class RequestTimeoutError extends BaseError {
     constructor (url: unknown) {
       super(`Request timeout: ${url}`);
     }
@@ -85,7 +95,7 @@ export namespace Err {
   /**
    * @public
    */
-   export class SocketTimeoutError extends BaseError {
+  export class SocketTimeoutError extends BaseError {
     constructor (url: unknown) {
       super(`Socket timeout: ${url}`);
     }

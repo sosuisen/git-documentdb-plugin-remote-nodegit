@@ -1,8 +1,8 @@
 {
   "name": "git-documentdb-plugin-remote-nodegit",
-  "version": "1.0.0",
-  "description": "",
-  "main": "main.js",
+  "version": "1.0.0-alpha.4",
+  "description": "GitDocumentDB plugin for remote connection using NodeGit",
+  "main": "dist/main.js",
   "types": "dist/main.d.ts",
   "scripts": {
     "build": "rm -rf dist/* && tsc --project src/tsconfig.json"

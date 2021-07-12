@@ -6,8 +6,4 @@
  * @packageDocumentation
  */
 
- export * from './error';
  export * from './remote-nodegit';
- export * from './types';
- export * from './const';
- 
