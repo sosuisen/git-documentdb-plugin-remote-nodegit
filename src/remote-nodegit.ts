@@ -34,7 +34,7 @@ async function clone(
   logger?: Logger
 ): Promise<void> {
   logger ??= new Logger({
-    name: 'clone',
+    name: 'plugin-nodegit',
     minLevel: 'trace',
     displayDateTime: false,
     displayFunctionName: false,
@@ -137,7 +137,7 @@ async function checkFetch(
   logger?: Logger  
 ): Promise<'exist' | 'not_exist'> {
   logger ??= new Logger({
-    name: 'clone',
+    name: 'plugin-nodegit',
     minLevel: 'trace',
     displayDateTime: false,
     displayFunctionName: false,
@@ -208,7 +208,7 @@ async function checkPush(
   logger?: Logger
 ) {
   logger ??= new Logger({
-    name: 'clone',
+    name: 'plugin-nodegit',
     minLevel: 'trace',
     displayDateTime: false,
     displayFunctionName: false,
@@ -361,7 +361,7 @@ async function validatePushResult (repos: nodegit.Repository, workingDir: string
  */
  async function fetch (workingDir: string, remoteOptions: RemoteOptions, logger?: Logger) {
    logger ??= new Logger({
-    name: 'clone',
+    name: 'plugin-nodegit',
     minLevel: 'trace',
     displayDateTime: false,
     displayFunctionName: false,
@@ -372,7 +372,7 @@ async function validatePushResult (repos: nodegit.Repository, workingDir: string
 
   const repos = await nodegit.Repository.open(workingDir);
   const credential = createCredential(remoteOptions)
-  repos.fetch('origin', {
+  await repos.fetch('origin', {
       callbacks: credential,
     })
     .catch(err => {
