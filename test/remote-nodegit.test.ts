@@ -527,4 +527,87 @@
 
       destroyDBs([gitDDB]);
     });
+
+    it('throws HttpProtocolRequiredError when remoteURL starts with ssh://', async () => {
+      const dbName = serialId();
+      const remoteURL = 'ssh://github.com/';
+      const gitDDB: GitDocumentDB = new GitDocumentDB({
+        dbName,
+        localDir,
+      });
+      await gitDDB.open();
+      const options: RemoteOptions = {
+        remoteUrl: remoteURL,
+        connection: {
+          type: 'github',
+          personalAccessToken: 'foobar',
+        },
+      };
+      const sync = new Sync(gitDDB, options);
+      await expect(sync.init()).rejects.toThrowError(Err.HttpProtocolRequiredError);
+      await gitDDB.destroy();
+    });
+  
+    it('throws UndefinedPersonalAccessTokenError', async () => {
+      const dbName = serialId();
+      const remoteURL = remoteURLBase + serialId();
+      const gitDDB: GitDocumentDB = new GitDocumentDB({
+        dbName,
+        localDir,
+      });
+      await gitDDB.open();
+      const options: RemoteOptions = {
+        remoteUrl: remoteURL,
+        connection: {
+          type: 'github',
+          personalAccessToken: '',
+        },
+      };
+      expect(() => new Sync(gitDDB, options)).toThrowError(
+        Err.UndefinedPersonalAccessTokenError
+      );
+      await gitDDB.destroy();
+    });
+  
+    it('does not throw UndefinedPersonalAccessTokenError when syncDirections is "pull" ', async () => {
+      const dbName = serialId();
+      const remoteURL = remoteURLBase + serialId();
+      const gitDDB: GitDocumentDB = new GitDocumentDB({
+        dbName,
+        localDir,
+      });
+      await gitDDB.open();
+      const options: RemoteOptions = {
+        remoteUrl: remoteURL,
+        syncDirection: 'pull',
+        connection: {
+          type: 'github',
+          personalAccessToken: '',
+        },
+      };
+      expect(() => new Sync(gitDDB, options)).not.toThrowError(
+        Err.UndefinedPersonalAccessTokenError
+      );
+      await gitDDB.destroy();
+    });
+
+    
+  it('throws InvalidRepositoryURLError when url does not show a repository.', async () => {
+    const dbName = serialId();
+    const remoteURL = 'https://github.com/';
+    const gitDDB: GitDocumentDB = new GitDocumentDB({
+      dbName,
+      localDir,
+    });
+    await gitDDB.open();
+    const options: RemoteOptions = {
+      remoteUrl: remoteURL,
+      connection: {
+        type: 'github',
+        personalAccessToken: 'foobar',
+      },
+    };
+    expect(() => new Sync(gitDDB, options)).toThrowError(Err.InvalidRepositoryURLError);
+    await gitDDB.destroy();
+  });
   });

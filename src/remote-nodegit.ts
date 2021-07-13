@@ -160,8 +160,6 @@ async function checkFetch(
   );
   await remote.disconnect();
 
-  repos.cleanup();
-
   // if (error !== 'undefined') console.warn('connect fetch error: ' + error);
   switch (true) {
     case error === 'undefined':
@@ -231,8 +229,6 @@ async function checkPush(
       .catch(err => err)
   );
   await remote.disconnect();
-
-  repos.cleanup();
 
   // if (error !== 'undefined') console.warn('connect push error: ' + error);
   switch (true) {
@@ -309,10 +305,8 @@ async function checkPush(
       }
       throw new Err.GitPushError(err.message);
     });
-  // gitDDB.logger.debug(CONSOLE_STYLE.BgWhite().FgBlack().tag()`sync_worker: May pushed.`);
+  
   await validatePushResult(repos, workingDir, credential);
-
-  repos.cleanup();  
 }
 
 /**
@@ -384,8 +378,6 @@ async function validatePushResult (repos: nodegit.Repository, workingDir: string
     .catch(err => {
       throw new Err.SyncWorkerFetchError(err.message);
     });
-
-    repos.cleanup();
 }
 
 export { checkFetch, checkPush, clone, fetch, push, type };
