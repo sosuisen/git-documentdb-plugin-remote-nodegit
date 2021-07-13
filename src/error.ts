@@ -77,7 +77,7 @@ export namespace Err {
    * @public
    */
   export class InvalidSSHKeyPathError extends BaseError {
-    constructor () {
+    constructor() {
       const e = `Invalid SSH key path`;
       super(e);
     }
@@ -87,7 +87,7 @@ export namespace Err {
    * @public
    */
   export class RequestTimeoutError extends BaseError {
-    constructor (url: unknown) {
+    constructor(url: unknown) {
       super(`Request timeout: ${url}`);
     }
   }
@@ -96,7 +96,7 @@ export namespace Err {
    * @public
    */
   export class SocketTimeoutError extends BaseError {
-    constructor (url: unknown) {
+    constructor(url: unknown) {
       super(`Socket timeout: ${url}`);
     }
   }
@@ -105,7 +105,7 @@ export namespace Err {
    * @public
    */
   export class HTTPNetworkError extends BaseError {
-    constructor (mes: unknown) {
+    constructor(mes: unknown) {
       super(`HTTPNetworkError: ${mes}`);
     }
   }
@@ -115,16 +115,16 @@ export namespace Err {
    * @public
    */
   export class InvalidURLError extends BaseError {
-    constructor (url: unknown) {
+    constructor(url: unknown) {
       super(`Invalid url: ${url}'`);
     }
   }
 
- /**
-   * @public
-   */
+  /**
+    * @public
+    */
   export class RemoteRepositoryNotFoundError extends BaseError {
-    constructor (url: unknown) {
+    constructor(url: unknown) {
       super(
         `Repository does not exist, or you do not have permission to access the repository: ${url}`
       );
@@ -135,7 +135,7 @@ export namespace Err {
    * @public
    */
   export class PushPermissionDeniedError extends BaseError {
-    constructor (mes: unknown) {
+    constructor(mes: unknown) {
       super(`Permission denied to push to the repository: ${mes}`);
     }
   }
@@ -144,7 +144,7 @@ export namespace Err {
    * @public
    */
   export class FetchPermissionDeniedError extends BaseError {
-    constructor (mes: unknown) {
+    constructor(mes: unknown) {
       super(`Permission denied to fetch to the repository: ${mes}`);
     }
   }
@@ -152,8 +152,8 @@ export namespace Err {
   /**
    * @public
    */
-   export class FetchConnectionFailedError extends BaseError {
-    constructor (mes: unknown) {
+  export class FetchConnectionFailedError extends BaseError {
+    constructor(mes: unknown) {
       super(`Fetch connection failed: ${mes}`);
     }
   }
@@ -162,8 +162,46 @@ export namespace Err {
    * @public
    */
   export class PushConnectionFailedError extends BaseError {
-    constructor (mes: unknown) {
+    constructor(mes: unknown) {
       super(`Push connection failed: ${mes}`);
+    }
+  }
+
+  /**
+   * @public
+   */
+  export class UnfetchedCommitExistsError extends BaseError {
+    constructor() {
+      super(
+        'Cannot push because a reference that you are trying to update on the remote contains commits that are not present locally.'
+      );
+    }
+  }
+
+  /**
+   * @public
+   */
+  export class GitPushError extends BaseError {
+    constructor(mes: string) {
+      super(`Push error in Git : ${mes}`);
+    }
+  }
+
+  /**
+  * @public
+  */
+  export class SyncWorkerFetchError extends BaseError {
+    constructor(mes: string) {
+      super(`Fetch error in sync worker: ${mes}`);
+    }
+  }
+
+  /**
+   * @public
+   */
+  export class NoMergeBaseFoundError extends BaseError {
+    constructor() {
+      super(`No merge base found`);
     }
   }
 

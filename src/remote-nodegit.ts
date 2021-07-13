@@ -7,6 +7,8 @@
  */
 
 import nodegit from '@sosuisen/nodegit';
+import git from 'isomorphic-git';
+import fs from 'fs';
 import { Logger } from 'tslog';
 import { Err } from './error';
 import { NETWORK_RETRY, NETWORK_RETRY_INTERVAL, NETWORK_TIMEOUT } from './const';
@@ -132,7 +134,6 @@ async function _getOrCreateGitRemote(
 async function checkFetch(
   workingDir: string,
   options: RemoteOptions,
-  credentialCallbacks: { [key: string]: any },
   logger?: Logger  
 ): Promise<'exist' | 'not_exist'> {
   logger ??= new Logger({
@@ -142,7 +143,7 @@ async function checkFetch(
     displayFunctionName: false,
     displayFilePath: 'hidden',
   });
-
+  const credential = createCredential(options);
   const repos = await nodegit.Repository.open(workingDir);
   // Get NodeGit.Remote
   const [gitResult, remote] = await _getOrCreateGitRemote(
@@ -154,7 +155,7 @@ async function checkFetch(
   const remoteURL = remote.url();
   const error = String(
     await remote
-      .connect(nodegit.Enums.DIRECTION.FETCH, credentialCallbacks)
+      .connect(nodegit.Enums.DIRECTION.FETCH, credential)
       .catch(err => err)
   );
   await remote.disconnect();
@@ -206,7 +207,6 @@ async function checkFetch(
 async function checkPush(
   workingDir: string,
   options: RemoteOptions,
-  credentialCallbacks: { [key: string]: any },
   logger?: Logger
 ) {
   logger ??= new Logger({
@@ -216,7 +216,7 @@ async function checkPush(
     displayFunctionName: false,
     displayFilePath: 'hidden',
   });
-
+  const credential = createCredential(options);
   const repos = await nodegit.Repository.open(workingDir);
   // Get NodeGit.Remote
   const [gitResult, remote] = await _getOrCreateGitRemote(
@@ -227,7 +227,7 @@ async function checkPush(
 
   const error = String(
     await remote
-      .connect(nodegit.Enums.DIRECTION.PUSH, credentialCallbacks)
+      .connect(nodegit.Enums.DIRECTION.PUSH, credential)
       .catch(err => err)
   );
   await remote.disconnect();
@@ -264,4 +264,128 @@ async function checkPush(
   return 'ok';
 }
 
-export { checkFetch, checkPush, clone, type };
+/**
+ * Calc distance
+ */
+ export function calcDistance (
+  baseCommitOid: string,
+  localCommitOid: string,
+  remoteCommitOid: string
+) {
+  if (baseCommitOid === undefined) {
+    return {
+      ahead: undefined,
+      behind: undefined,
+    };
+  }
+  return {
+    ahead: localCommitOid !== baseCommitOid ? 1 : 0,
+    behind: remoteCommitOid !== baseCommitOid ? 1 : 0,
+  };
+}
+
+/**
+ * git push
+ *
+ * @throws {@link Err.UnfetchedCommitExistsError} (from this and validatePushResult())
+ * @throws {@link Err.SyncWorkerFetchError} (from validatePushResult())
+ * @throws {@link Err.GitPushError} (from NodeGit.Remote.push())
+ */
+ async function push (workingDir: string, remoteOptions: RemoteOptions): Promise<void> {
+  const repos = await nodegit.Repository.open(workingDir);
+  const remote: nodegit.Remote = await repos.getRemote('origin');
+  const credential = createCredential(remoteOptions)
+  await remote
+    .push(['refs/heads/main:refs/heads/main'], {
+      callbacks: credential,
+    })
+    .catch((err: Error) => {
+      if (
+        err.message.startsWith(
+          'cannot push because a reference that you are trying to update on the remote contains commits that are not present locally'
+        )
+      ) {
+        throw new Err.UnfetchedCommitExistsError();
+      }
+      throw new Err.GitPushError(err.message);
+    });
+  // gitDDB.logger.debug(CONSOLE_STYLE.BgWhite().FgBlack().tag()`sync_worker: May pushed.`);
+  await validatePushResult(repos, workingDir, credential);
+
+  repos.cleanup();  
+}
+
+/**
+ * NodeGit.Remote.push does not return valid error in race condition,
+ * so check is needed.
+ *
+ * @throws {@link Err.SyncWorkerFetchError}
+ * @throws {@link Err.UnfetchedCommitExistsError}
+ */
+async function validatePushResult (repos: nodegit.Repository, workingDir: string, credential: { credentials: any }): Promise<void> {
+  await repos
+    .fetch('origin', {
+      callbacks: credential,
+    })
+    .catch(err => {
+      throw new Err.SyncWorkerFetchError(err.message);
+    });
+
+  // Use isomorphic-git to avoid memory leak
+  const localCommitOid = await git.resolveRef({
+    fs,
+    dir: workingDir,
+    ref: 'HEAD',
+  });
+  const remoteCommitOid = await git.resolveRef({
+    fs,
+    dir: workingDir,
+    ref: 'refs/remotes/origin/main',
+  });
+
+  const [baseCommitOid] = await git.findMergeBase({
+    fs,
+    dir: workingDir,
+    oids: [localCommitOid, remoteCommitOid],
+  });
+
+  const distance = await calcDistance(baseCommitOid, localCommitOid, remoteCommitOid);
+
+  if (distance.behind === undefined) {
+    // This will not be occurred.
+    throw new Err.NoMergeBaseFoundError();
+  }
+  else if (distance.behind > 0) {
+    throw new Err.UnfetchedCommitExistsError();
+  }
+}
+
+/**
+ * git fetch
+ *
+ * @throws {@link Err.SyncWorkerFetchError}
+ */
+ async function fetch (workingDir: string, remoteOptions: RemoteOptions, logger?: Logger) {
+   logger ??= new Logger({
+    name: 'clone',
+    minLevel: 'trace',
+    displayDateTime: false,
+    displayFunctionName: false,
+    displayFilePath: 'hidden',
+  });
+
+  logger.debug(`sync_worker: fetch: ${remoteOptions.remoteUrl}`);
+
+  const repos = await nodegit.Repository.open(workingDir);
+  const credential = createCredential(remoteOptions)
+  repos.fetch('origin', {
+      callbacks: credential,
+    })
+    .catch(err => {
+      throw new Err.SyncWorkerFetchError(err.message);
+    });
+
+    repos.cleanup();
+}
+
+export { checkFetch, checkPush, clone, fetch, push, type };
