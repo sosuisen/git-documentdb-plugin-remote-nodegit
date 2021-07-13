@@ -110,4 +110,61 @@ export namespace Err {
     }
   }
 
+
+  /**
+   * @public
+   */
+  export class InvalidURLError extends BaseError {
+    constructor (url: unknown) {
+      super(`Invalid url: ${url}'`);
+    }
+  }
+
+ /**
+   * @public
+   */
+  export class RemoteRepositoryNotFoundError extends BaseError {
+    constructor (url: unknown) {
+      super(
+        `Repository does not exist, or you do not have permission to access the repository: ${url}`
+      );
+    }
+  }
+
+  /**
+   * @public
+   */
+  export class PushPermissionDeniedError extends BaseError {
+    constructor (mes: unknown) {
+      super(`Permission denied to push to the repository: ${mes}`);
+    }
+  }
+
+  /**
+   * @public
+   */
+  export class FetchPermissionDeniedError extends BaseError {
+    constructor (mes: unknown) {
+      super(`Permission denied to fetch to the repository: ${mes}`);
+    }
+  }
+
+  /**
+   * @public
+   */
+   export class FetchConnectionFailedError extends BaseError {
+    constructor (mes: unknown) {
+      super(`Fetch connection failed: ${mes}`);
+    }
+  }
+
+  /**
+   * @public
+   */
+  export class PushConnectionFailedError extends BaseError {
+    constructor (mes: unknown) {
+      super(`Push connection failed: ${mes}`);
+    }
+  }
+
 }
