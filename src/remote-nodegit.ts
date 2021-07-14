@@ -307,6 +307,9 @@ async function checkPush(
     });
   
   await validatePushResult(repos, workingDir, credential);
+
+  // It leaks memory if not cleanup
+  repos.cleanup();
 }
 
 /**
@@ -378,6 +381,8 @@ async function validatePushResult (repos: nodegit.Repository, workingDir: string
     .catch(err => {
       throw new Err.GitFetchError(err.message);
     });
+  // It leaks memory if not cleanup    
+  repos.cleanup();
 }
 
 export { checkFetch, checkPush, clone, fetch, push, type };
