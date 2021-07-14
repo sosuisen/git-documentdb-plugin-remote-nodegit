@@ -21,7 +21,7 @@ function createCredentialForGitHub (options: RemoteOptions) {
   }
   const connection = options.connection as ConnectionSettingsGitHub;
   if (options.syncDirection !== 'pull' && !connection.personalAccessToken) {
-    throw new Err.UndefinedPersonalAccessTokenError();
+    throw new Err.RemoteUndefinedPersonalAccessTokenError();
   }
   const urlArray = options.remoteUrl!.replace(/^https?:\/\//, '').split('/');
   // github.com/account_name/repository_name

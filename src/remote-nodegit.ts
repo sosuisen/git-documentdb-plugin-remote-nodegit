@@ -284,7 +284,7 @@ async function checkPush(
  * git push
  *
  * @throws {@link Err.UnfetchedCommitExistsError} (from this and validatePushResult())
- * @throws {@link Err.SyncWorkerFetchError} (from validatePushResult())
+ * @throws {@link Err.GitFetchError} (from validatePushResult())
  * @throws {@link Err.GitPushError} (from NodeGit.Remote.push())
  */
  async function push (workingDir: string, remoteOptions: RemoteOptions): Promise<void> {
@@ -313,7 +313,7 @@ async function checkPush(
  * NodeGit.Remote.push does not return valid error in race condition,
  * so check is needed.
  *
- * @throws {@link Err.SyncWorkerFetchError}
+ * @throws {@link Err.GitFetchError}
  * @throws {@link Err.UnfetchedCommitExistsError}
  */
 async function validatePushResult (repos: nodegit.Repository, workingDir: string, credential: { credentials: any }): Promise<void> {
@@ -322,7 +322,7 @@ async function validatePushResult (repos: nodegit.Repository, workingDir: string
       callbacks: credential,
     })
     .catch(err => {
-      throw new Err.SyncWorkerFetchError(err.message);
+      throw new Err.GitFetchError(err.message);
     });
 
   // Use isomorphic-git to avoid memory leak
@@ -357,7 +357,7 @@ async function validatePushResult (repos: nodegit.Repository, workingDir: string
 /**
  * git fetch
  *
- * @throws {@link Err.SyncWorkerFetchError}
+ * @throws {@link Err.GitFetchError}
  */
  async function fetch (workingDir: string, remoteOptions: RemoteOptions, logger?: Logger) {
    logger ??= new Logger({
@@ -376,7 +376,7 @@ async function validatePushResult (repos: nodegit.Repository, workingDir: string
       callbacks: credential,
     })
     .catch(err => {
-      throw new Err.SyncWorkerFetchError(err.message);
+      throw new Err.GitFetchError(err.message);
     });
 }
 
