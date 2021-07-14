@@ -22,6 +22,8 @@ export function sleep(msec: number) {
 
 const type = 'remote';
 
+const name = 'nodegit';
+
 /**
  * Clone
  *
@@ -380,4 +382,4 @@ async function validatePushResult (repos: nodegit.Repository, workingDir: string
     });
 }
 
-export { checkFetch, checkPush, clone, fetch, push, type };
+export { checkFetch, checkPush, clone, fetch, push, name, type };
