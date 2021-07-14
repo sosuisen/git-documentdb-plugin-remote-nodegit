@@ -47,15 +47,6 @@ export namespace Err {
   }
 
   /**
-  * @public
-  */
-  export class HttpProtocolRequiredError extends BaseError {
-    constructor(url: unknown) {
-      super(`HTTP protocol is required: ${url}`);
-    }
-  }
-
-  /**
    * @public
    */
   export class InvalidRepositoryURLError extends BaseError {
@@ -65,9 +56,13 @@ export namespace Err {
   }
 
   /**
+   * @remark 
+   * Add prefix 'Remote' due to UndefinedPersonalAccessTokenError exists
+   * in GitDocumentDB, 
+   *
    * @public
    */
-  export class UndefinedPersonalAccessTokenError extends BaseError {
+   export class RemoteUndefinedPersonalAccessTokenError extends BaseError {
     constructor() {
       super(`Personal Access Token of your GitHub account is needed.`);
     }
@@ -86,8 +81,17 @@ export namespace Err {
   /**
    * @public
    */
-  export class RequestTimeoutError extends BaseError {
-    constructor(url: unknown) {
+  export class HttpProtocolRequiredError extends BaseError {
+    constructor (url: unknown) {
+      super(`HTTP protocol is required: ${url}`);
+    }
+  }
+
+  /**
+   * @public
+   */
+   export class RequestTimeoutError extends BaseError {
+    constructor (url: unknown) {
       super(`Request timeout: ${url}`);
     }
   }
@@ -96,11 +100,11 @@ export namespace Err {
    * @public
    */
   export class SocketTimeoutError extends BaseError {
-    constructor(url: unknown) {
+    constructor (url: unknown) {
       super(`Socket timeout: ${url}`);
     }
   }
-
+  
   /**
    * @public
    */
@@ -109,7 +113,6 @@ export namespace Err {
       super(`HTTPNetworkError: ${mes}`);
     }
   }
-
 
   /**
    * @public
@@ -190,7 +193,7 @@ export namespace Err {
   /**
   * @public
   */
-  export class SyncWorkerFetchError extends BaseError {
+  export class GitFetchError extends BaseError {
     constructor(mes: string) {
       super(`Fetch error in sync worker: ${mes}`);
     }

@@ -12,38 +12,6 @@ import https from 'https';
 import { Err } from './error';
 
 /**
- * Ping to host
- */
-/*
-export const ping = (
-  port: number,
-  address: string,
-  timeout: number
-): Promise<{ ok: boolean; error?: Error }> => {
-  return new Promise(resolve => {
-    // Create a new tcp socket
-    const socket = new Socket();
-    // Connect to the given host
-    socket.connect(port, address, () => {
-      socket.destroy();
-      // Resolve with the latency of this attempt
-      resolve({ ok: true });
-    });
-    // Make sure we catch any errors thrown by the socket
-    socket.on('error', error => {
-      socket.destroy();
-      resolve({ ok: false, error });
-    });
-
-    socket.setTimeout(timeout, () => {
-      socket.destroy();
-      resolve({ ok: false, error: new Error('Request timeout') });
-    });
-  });
-};
-*/
-
-/**
  * Check HTTP connection
  * @remarks
  * requestTimeout and socketTimeout must be greater than 0.
