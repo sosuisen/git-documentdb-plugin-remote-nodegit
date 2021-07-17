@@ -20,15 +20,24 @@ import { RemoteOptions } from './types';
 import { createCredential } from './authentication';
 import { checkHTTP } from './net';
 
+/**
+ * @internal
+ */
 export function sleep(msec: number) {
   return new Promise((resolve) => setTimeout(resolve, msec));
 }
 
+/**
+ * @public
+ */
 // eslint-disable-next-line @typescript-eslint/naming-convention
-const type = 'remote';
+export const type = 'remote';
 
+/**
+ * @public
+ */
 // eslint-disable-next-line @typescript-eslint/naming-convention
-const name = 'nodegit';
+export const name = 'nodegit';
 
 /**
  * Clone
@@ -40,8 +49,10 @@ const name = 'nodegit';
  * @throws {@link Err.HTTPNetworkError} (from checkHTTP)
  * @throws {@link Err.RequestTimeoutError} (from checkHTTP)
  * @throws {@link Err.SocketTimeoutError} (from checkHTTP)
+ *
+ * @public
  */
-async function clone(
+export async function clone(
   workingDir: string,
   remoteOptions: RemoteOptions,
   logger?: Logger
@@ -152,9 +163,11 @@ async function getOrCreateGitRemote(
  * @throws {@link Err.InvalidSSHKeyPathError} (from createCredentialForSSH)
  *
  * @throws {@link Err.InvalidAuthenticationTypeError} (from createCredential)
+ *
+ * @public
  */
 // eslint-disable-next-line complexity
-async function checkFetch(
+export async function checkFetch(
   workingDir: string,
   options: RemoteOptions,
   logger?: Logger
@@ -296,8 +309,10 @@ async function checkPush(
 
 /**
  * Calc distance
+ *
+ * @internal
  */
-export function calcDistance(
+function calcDistance(
   baseCommitOid: string,
   localCommitOid: string,
   remoteCommitOid: string
@@ -320,8 +335,10 @@ export function calcDistance(
  * @throws {@link Err.UnfetchedCommitExistsError} (from this and validatePushResult())
  * @throws {@link Err.GitFetchError} (from validatePushResult())
  * @throws {@link Err.GitPushError} (from NodeGit.Remote.push())
+ *
+ * @public
  */
-async function push(
+export async function push(
   workingDir: string,
   remoteOptions: RemoteOptions
 ): Promise<void> {
@@ -413,8 +430,10 @@ async function validatePushResult(
  * @throws {@link Err.InvalidSSHKeyPathError} (from createCredentialForSSH)
  *
  * @throws {@link Err.InvalidAuthenticationTypeError} (from createCredential)
+ *
+ * @public
  */
-async function fetch(
+export async function fetch(
   workingDir: string,
   remoteOptions: RemoteOptions,
   logger?: Logger
@@ -441,5 +460,3 @@ async function fetch(
   // It leaks memory if not cleanup
   repos.cleanup();
 }
-
-export { checkFetch, checkPush, clone, fetch, push, name, type };

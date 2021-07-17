@@ -56,7 +56,7 @@ export namespace Err {
   }
 
   /**
-   * @remark
+   * @remarks
    * Add prefix 'Remote' due to UndefinedPersonalAccessTokenError exists
    * in GitDocumentDB,
    *
@@ -120,6 +120,16 @@ export namespace Err {
   export class InvalidURLError extends BaseError {
     constructor(url: unknown) {
       super(`Invalid url: ${url}'`);
+    }
+  }
+
+  /**
+   * @public
+   */
+  export class InvalidAuthenticationTypeError extends BaseError {
+    constructor(type: unknown) {
+      super(`Authentication type must be one of the following values: 'github', 'ssh'.
+Current value is '${type}'`);
     }
   }
 
