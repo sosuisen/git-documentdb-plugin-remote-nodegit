@@ -1,0 +1,84 @@
+{
+  "env": {
+    "browser": true,
+    "es6": true,
+    "node": true
+  },
+  "extends": [
+    "standardize",
+    "standardize/typescript"
+  ],
+  "plugins": ["@typescript-eslint", "prettierx"],
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "project": "./tsconfig.eslint.json",
+    "sourceType": "module"
+  },
+  "settings": {
+    "import/resolver": {
+      "node": {
+        "extensions": [
+          ".js",
+          ".jsx",
+          ".json",
+          ".ts",
+          ".tsx"
+        ]
+      }
+    }
+  },
+
+  "rules": {
+    "unicorn/no-unreadable-array-destructuring": "off",
+    "no-restricted-syntax": [
+      "error",
+      {
+        "selector": "TSEnumDeclaration",
+        "message": "Don't declare enums"
+      }
+    ],
+    "@typescript-eslint/member-delimiter-style": [
+      "error",
+      {
+        "multiline": {
+          "delimiter": "semi",
+          "requireLast": true
+        },
+        "singleline": {
+          "delimiter": "semi",
+          "requireLast": false
+        }
+      }
+    ],
+    "@typescript-eslint/no-parameter-properties": "off",
+    "@typescript-eslint/interface-name-prefix": [0],
+    "prettierx/options": ["error", {
+       "singleQuote": true,
+       "jsxSingleQuote": true,
+       "breakBeforeElse": true,
+       "semi": true,
+       "trailingComma": "es5"
+    }],
+    "@typescript-eslint/naming-convention": ["error", {
+      "selector": "variable",
+      "modifiers": ["const", "global"],
+      "format": ["UPPER_CASE"]
+    },{
+      "selector": ["variableLike", "property"],
+      "filter": "_id",
+      "format": null,
+      "leadingUnderscore": "allow"
+    },{
+      "selector": "default",
+      "format": ["camelCase"]
+    },{
+      "selector": "typeLike",
+      "format": ["PascalCase"]
+    }, {
+      "selector": "memberLike",
+      "modifiers": ["private"],
+      "format": ["camelCase"],
+      "leadingUnderscore": "require"
+    }]
+  }
+}

@@ -1,5 +1,5 @@
 export class DiffPerfdata {
-    version: number;
-    statCalls: number;
-    oidCalculations: number;
+  version: number;
+  statCalls: number;
+  oidCalculations: number;
 }

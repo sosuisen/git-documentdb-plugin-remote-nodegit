@@ -6,22 +6,28 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
+import fs from 'fs';
 import nodegit from '@sosuisen/nodegit';
 import git from 'isomorphic-git';
-import fs from 'fs';
 import { Logger } from 'tslog';
 import { Err } from './error';
-import { NETWORK_RETRY, NETWORK_RETRY_INTERVAL, NETWORK_TIMEOUT } from './const';
+import {
+  NETWORK_RETRY,
+  NETWORK_RETRY_INTERVAL,
+  NETWORK_TIMEOUT,
+} from './const';
 import { RemoteOptions } from './types';
 import { createCredential } from './authentication';
 import { checkHTTP } from './net';
 
 export function sleep(msec: number) {
-  return new Promise(resolve => setTimeout(resolve, msec));
+  return new Promise((resolve) => setTimeout(resolve, msec));
 }
 
+// eslint-disable-next-line @typescript-eslint/naming-convention
 const type = 'remote';
 
+// eslint-disable-next-line @typescript-eslint/naming-convention
 const name = 'nodegit';
 
 /**
@@ -50,36 +56,40 @@ async function clone(
     /**
      * Retry if network errors.
      */
-    let result: {
-      ok: boolean;
-      code?: number;
-      error?: Error;
-    } = {
+    let result: { ok: boolean; code?: number } = {
       ok: false,
     };
     let retry = 0;
     for (; retry < NETWORK_RETRY; retry++) {
       // eslint-disable-next-line no-await-in-loop
-      result = await checkHTTP(remoteOptions.remoteUrl!, NETWORK_TIMEOUT).catch(err => err);
+      result = await checkHTTP(remoteOptions.remoteUrl!, NETWORK_TIMEOUT).catch(
+        (err) => err
+      );
       if (result.ok) {
         break;
       }
       else {
-        logger.debug(`NetworkError in cloning: ${remoteOptions.remoteUrl}, ` + result);
+        logger.debug(
+          `NetworkError in cloning: ${remoteOptions.remoteUrl}, ` + result
+        );
       }
       // eslint-disable-next-line no-await-in-loop
       await sleep(NETWORK_RETRY_INTERVAL);
     }
     if (!result.ok) {
       // Set retry number for code test
-      throw new Err.CannotConnectError(retry, remoteOptions.remoteUrl, result.toString());
+      throw new Err.CannotConnectError(
+        retry,
+        remoteOptions.remoteUrl,
+        result.toString()
+      );
     }
 
     await nodegit.Clone.clone(remoteOptions.remoteUrl, workingDir, {
       fetchOpts: {
         callbacks: createCredential(remoteOptions),
       },
-    }).catch(err => {
+    }).catch((err) => {
       // Errors except CannotConnectError are handled in combine functions.
 
       logger!.debug(`Error in cloning: ${remoteOptions.remoteUrl}, ` + err);
@@ -91,7 +101,7 @@ async function clone(
 /**
  * GitOrigin
  */
- type GitRemoteAction = 'add' | 'change' | 'exist';
+type GitRemoteAction = 'add' | 'change' | 'exist';
 
 /**
  * Get or create Git remote named 'origin'
@@ -101,13 +111,13 @@ async function clone(
  * @internal
  */
 // eslint-disable-next-line complexity
-async function _getOrCreateGitRemote(
+async function getOrCreateGitRemote(
   repos: nodegit.Repository,
   remoteURL: string
 ): Promise<[GitRemoteAction, nodegit.Remote]> {
   let result: GitRemoteAction;
   // Check if remote repository already exists
-  let remote = await nodegit.Remote.lookup(repos, 'origin').catch(() => { });
+  let remote = await nodegit.Remote.lookup(repos, 'origin').catch(() => {});
   if (remote === undefined) {
     // Add remote repository
     remote = await nodegit.Remote.create(repos, 'origin', remoteURL);
@@ -136,7 +146,7 @@ async function _getOrCreateGitRemote(
 async function checkFetch(
   workingDir: string,
   options: RemoteOptions,
-  logger?: Logger  
+  logger?: Logger
 ): Promise<'exist' | 'not_exist'> {
   logger ??= new Logger({
     name: 'plugin-nodegit',
@@ -148,17 +158,17 @@ async function checkFetch(
   const credential = createCredential(options);
   const repos = await nodegit.Repository.open(workingDir);
   // Get NodeGit.Remote
-  const [gitResult, remote] = await _getOrCreateGitRemote(
+  const [gitResult, remote] = await getOrCreateGitRemote(
     repos,
     options.remoteUrl!
   );
   logger.debug('Git remote: ' + gitResult);
-  
+
   const remoteURL = remote.url();
   const error = String(
     await remote
       .connect(nodegit.Enums.DIRECTION.FETCH, credential)
-      .catch(err => err)
+      .catch((err) => err)
   );
   await remote.disconnect();
 
@@ -179,16 +189,20 @@ async function checkFetch(
         return 'not_exist';
       }
       throw new Err.RemoteRepositoryNotFoundError(remoteURL + ':' + error);
-      
+
     case error.startsWith(
       'Error: remote credential provider returned an invalid cred type'
     ): // on Ubuntu
-    case error.startsWith('Failed to retrieve list of SSH authentication methods'):
-    case error.startsWith('Error: too many redirects or authentication replays'):
+    case error.startsWith(
+      'Failed to retrieve list of SSH authentication methods'
+    ):
+    case error.startsWith(
+      'Error: too many redirects or authentication replays'
+    ):
       throw new Err.FetchPermissionDeniedError(error);
     default:
       throw new Error(error);
-  };
+  }
 
   return 'exist';
 }
@@ -219,7 +233,7 @@ async function checkPush(
   const credential = createCredential(options);
   const repos = await nodegit.Repository.open(workingDir);
   // Get NodeGit.Remote
-  const [gitResult, remote] = await _getOrCreateGitRemote(
+  const [gitResult, remote] = await getOrCreateGitRemote(
     repos,
     options.remoteUrl!
   );
@@ -228,7 +242,7 @@ async function checkPush(
   const error = String(
     await remote
       .connect(nodegit.Enums.DIRECTION.PUSH, credential)
-      .catch(err => err)
+      .catch((err) => err)
   );
   await remote.disconnect();
 
@@ -252,7 +266,9 @@ async function checkPush(
     case error.startsWith(
       'Error: remote credential provider returned an invalid cred type'
     ): // on Ubuntu
-    case error.startsWith('Error: too many redirects or authentication replays'):
+    case error.startsWith(
+      'Error: too many redirects or authentication replays'
+    ):
     case error.startsWith('Error: ERROR: Permission to'): {
       throw new Err.PushPermissionDeniedError(error);
     }
@@ -265,7 +281,7 @@ async function checkPush(
 /**
  * Calc distance
  */
- export function calcDistance (
+export function calcDistance(
   baseCommitOid: string,
   localCommitOid: string,
   remoteCommitOid: string
@@ -289,10 +305,13 @@ async function checkPush(
  * @throws {@link Err.GitFetchError} (from validatePushResult())
  * @throws {@link Err.GitPushError} (from NodeGit.Remote.push())
  */
- async function push (workingDir: string, remoteOptions: RemoteOptions): Promise<void> {
+async function push(
+  workingDir: string,
+  remoteOptions: RemoteOptions
+): Promise<void> {
   const repos = await nodegit.Repository.open(workingDir);
   const remote: nodegit.Remote = await repos.getRemote('origin');
-  const credential = createCredential(remoteOptions)
+  const credential = createCredential(remoteOptions);
   await remote
     .push(['refs/heads/main:refs/heads/main'], {
       callbacks: credential,
@@ -307,7 +326,7 @@ async function checkPush(
       }
       throw new Err.GitPushError(err.message);
     });
-  
+
   await validatePushResult(repos, workingDir, credential);
 
   // It leaks memory if not cleanup
@@ -321,12 +340,16 @@ async function checkPush(
  * @throws {@link Err.GitFetchError}
  * @throws {@link Err.UnfetchedCommitExistsError}
  */
-async function validatePushResult (repos: nodegit.Repository, workingDir: string, credential: { credentials: any }): Promise<void> {
+async function validatePushResult(
+  repos: nodegit.Repository,
+  workingDir: string,
+  credential: { credentials: any }
+): Promise<void> {
   await repos
     .fetch('origin', {
       callbacks: credential,
     })
-    .catch(err => {
+    .catch((err) => {
       throw new Err.GitFetchError(err.message);
     });
 
@@ -348,7 +371,11 @@ async function validatePushResult (repos: nodegit.Repository, workingDir: string
     oids: [localCommitOid, remoteCommitOid],
   });
 
-  const distance = await calcDistance(baseCommitOid, localCommitOid, remoteCommitOid);
+  const distance = await calcDistance(
+    baseCommitOid,
+    localCommitOid,
+    remoteCommitOid
+  );
 
   if (distance.behind === undefined) {
     // This will not be occurred.
@@ -364,8 +391,12 @@ async function validatePushResult (repos: nodegit.Repository, workingDir: string
  *
  * @throws {@link Err.GitFetchError}
  */
- async function fetch (workingDir: string, remoteOptions: RemoteOptions, logger?: Logger) {
-   logger ??= new Logger({
+async function fetch(
+  workingDir: string,
+  remoteOptions: RemoteOptions,
+  logger?: Logger
+) {
+  logger ??= new Logger({
     name: 'plugin-nodegit',
     minLevel: 'trace',
     displayDateTime: false,
@@ -376,14 +407,15 @@ async function validatePushResult (repos: nodegit.Repository, workingDir: string
   logger.debug(`sync_worker: fetch: ${remoteOptions.remoteUrl}`);
 
   const repos = await nodegit.Repository.open(workingDir);
-  const credential = createCredential(remoteOptions)
-  await repos.fetch('origin', {
+  const credential = createCredential(remoteOptions);
+  await repos
+    .fetch('origin', {
       callbacks: credential,
     })
-    .catch(err => {
+    .catch((err) => {
       throw new Err.GitFetchError(err.message);
     });
-  // It leaks memory if not cleanup    
+  // It leaks memory if not cleanup
   repos.cleanup();
 }
 

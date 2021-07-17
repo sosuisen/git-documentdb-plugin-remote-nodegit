@@ -1,7 +1,7 @@
 export class Strarray {
-    copy(src: Strarray): number;
+  copy(src: Strarray): number;
 
-    free(): void;
-    strings: string[];
-    count: number;
+  free(): void;
+  strings: string[];
+  count: number;
 }

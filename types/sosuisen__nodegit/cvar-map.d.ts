@@ -1,5 +1,5 @@
 export class CvarMap {
-    cvarType: number;
-    strMatch: string;
-    mapValue: number;
+  cvarType: number;
+  strMatch: string;
+  mapValue: number;
 }

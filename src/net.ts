@@ -24,7 +24,7 @@ import { Err } from './error';
  *
  * @internal
  */
-export function checkHTTP (
+export function checkHTTP(
   url: string,
   requestTimeout: number,
   socketTimeout?: number
@@ -55,7 +55,7 @@ export function checkHTTP (
     }
 
     let socket: Socket;
-    const req = request!(url, res => {
+    const req = request!(url, (res) => {
       req.removeAllListeners();
       if (socket) {
         socket.removeAllListeners();
@@ -63,7 +63,7 @@ export function checkHTTP (
       req.destroy();
       resolve({ ok: true, code: res.statusCode });
     });
-    req.on('error', error => {
+    req.on('error', (error) => {
       // network error
       req.removeAllListeners();
       if (socket) {

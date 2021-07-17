@@ -9,13 +9,12 @@
 /**
  * @public
  */
- export const NETWORK_RETRY = 3;
- /**
-  * @public
-  */
- export const NETWORK_RETRY_INTERVAL = 2000;
- /**
-  * @public
-  */
- export const NETWORK_TIMEOUT = 7000;
- 
+export const NETWORK_RETRY = 3;
+/**
+ * @public
+ */
+export const NETWORK_RETRY_INTERVAL = 2000;
+/**
+ * @public
+ */
+export const NETWORK_TIMEOUT = 7000;

@@ -1,3 +1,4 @@
+/* eslint-disable unicorn/custom-error-definition */
 /**
  * GitDocumentDB plugin for remote connection using NodeGit
  * Copyright (c) Hidekazu Kubota
@@ -36,7 +37,6 @@ export namespace Err {
     }
   }
 
-
   /**
    * @public
    */
@@ -56,13 +56,13 @@ export namespace Err {
   }
 
   /**
-   * @remark 
+   * @remark
    * Add prefix 'Remote' due to UndefinedPersonalAccessTokenError exists
-   * in GitDocumentDB, 
+   * in GitDocumentDB,
    *
    * @public
    */
-   export class RemoteUndefinedPersonalAccessTokenError extends BaseError {
+  export class RemoteUndefinedPersonalAccessTokenError extends BaseError {
     constructor() {
       super(`Personal Access Token of your GitHub account is needed.`);
     }
@@ -82,7 +82,7 @@ export namespace Err {
    * @public
    */
   export class HttpProtocolRequiredError extends BaseError {
-    constructor (url: unknown) {
+    constructor(url: unknown) {
       super(`HTTP protocol is required: ${url}`);
     }
   }
@@ -90,8 +90,8 @@ export namespace Err {
   /**
    * @public
    */
-   export class RequestTimeoutError extends BaseError {
-    constructor (url: unknown) {
+  export class RequestTimeoutError extends BaseError {
+    constructor(url: unknown) {
       super(`Request timeout: ${url}`);
     }
   }
@@ -100,11 +100,11 @@ export namespace Err {
    * @public
    */
   export class SocketTimeoutError extends BaseError {
-    constructor (url: unknown) {
+    constructor(url: unknown) {
       super(`Socket timeout: ${url}`);
     }
   }
-  
+
   /**
    * @public
    */
@@ -124,8 +124,8 @@ export namespace Err {
   }
 
   /**
-    * @public
-    */
+   * @public
+   */
   export class RemoteRepositoryNotFoundError extends BaseError {
     constructor(url: unknown) {
       super(
@@ -191,8 +191,8 @@ export namespace Err {
   }
 
   /**
-  * @public
-  */
+   * @public
+   */
   export class GitFetchError extends BaseError {
     constructor(mes: string) {
       super(`Fetch error in sync worker: ${mes}`);
@@ -207,5 +207,4 @@ export namespace Err {
       super(`No merge base found`);
     }
   }
-
 }

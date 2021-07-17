@@ -6,6 +6,5 @@
  * @packageDocumentation
  */
 
- export * from './remote-nodegit';
- export * from './error';
- 
+export * from './remote-nodegit';
+export * from './error';

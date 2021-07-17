@@ -11,8 +11,7 @@
  *
  * @public
  */
- export type SyncDirection = 'pull' | 'push' | 'both';
-
+export type SyncDirection = 'pull' | 'push' | 'both';
 
 /**
  * Connection settings for GitHub
@@ -24,7 +23,7 @@
  *
  * @public
  */
- export type ConnectionSettingsGitHub = {
+export type ConnectionSettingsGitHub = {
   type: 'github';
   personalAccessToken?: string;
   private?: boolean;
@@ -42,13 +41,12 @@ export type ConnectionSettingsSSH = {
   passPhrase?: string;
 };
 
-
 /**
  * Connection settings do not exist.
  *
  * @public
  */
- export type ConnectionSettingsNone = {
+export type ConnectionSettingsNone = {
   type: 'none';
 };
 

@@ -8,14 +8,22 @@
 
 import nodegit from '@sosuisen/nodegit';
 import { Err } from './error';
-import { ConnectionSettingsGitHub, ConnectionSettingsSSH, RemoteOptions } from './types';
+import {
+  ConnectionSettingsGitHub,
+  ConnectionSettingsSSH,
+  RemoteOptions,
+} from './types';
 
 /**
  * Insert credential options for GitHub
  *
+ * @throws Err.HttpProtocolRequiredError
+ * @throws Err.RemoteUndefinedPersonalAccessTokenError
+ * @throws Err.InvalidRepositoryURLError
+ *
  * @internal
  */
-function createCredentialForGitHub (options: RemoteOptions) {
+function createCredentialForGitHub(options: RemoteOptions) {
   if (!options.remoteUrl!.match(/^https?:\/\//)) {
     throw new Err.HttpProtocolRequiredError(options.remoteUrl!);
   }
@@ -30,7 +38,10 @@ function createCredentialForGitHub (options: RemoteOptions) {
   }
   const owner = urlArray[urlArray.length - 2];
   const credentials = () => {
-    return nodegit.Cred.userpassPlaintextNew(owner, connection.personalAccessToken!);
+    return nodegit.Cred.userpassPlaintextNew(
+      owner,
+      connection.personalAccessToken!
+    );
   };
   return credentials;
 }
@@ -40,12 +51,18 @@ function createCredentialForGitHub (options: RemoteOptions) {
  *
  * @internal
  */
-function createCredentialForSSH (options: RemoteOptions) {
+function createCredentialForSSH(options: RemoteOptions) {
   const connection = options.connection as ConnectionSettingsSSH;
-  if (connection.privateKeyPath === undefined || connection.privateKeyPath === '') {
+  if (
+    connection.privateKeyPath === undefined ||
+    connection.privateKeyPath === ''
+  ) {
     throw new Err.InvalidSSHKeyPathError();
   }
-  if (connection.publicKeyPath === undefined || connection.publicKeyPath === '') {
+  if (
+    connection.publicKeyPath === undefined ||
+    connection.publicKeyPath === ''
+  ) {
     throw new Err.InvalidSSHKeyPathError();
   }
   connection.passPhrase ??= '';
@@ -66,7 +83,7 @@ function createCredentialForSSH (options: RemoteOptions) {
  *
  * @internal
  */
-export function createCredential (options: RemoteOptions) {
+export function createCredential(options: RemoteOptions) {
   options.connection ??= { type: 'none' };
   let cred: any;
   if (options.connection.type === 'github') {

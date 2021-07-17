@@ -1,3 +1,3 @@
 export class Openssl {
-    static setLocking(): number;
+  static setLocking(): number;
 }
