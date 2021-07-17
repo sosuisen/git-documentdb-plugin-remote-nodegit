@@ -1,8 +1,66 @@
+/**
+ * GitDocumentDB plugin for remote connection using NodeGit
+ * Copyright (c) Hidekazu Kubota
+ *
+ * This source code is licensed under the Mozilla Public License Version 2.0
+ * found in the LICENSE file in the root directory of this source tree.
+ */
+
+import expect from 'expect';
+import { Err, GitDocumentDB, RemoteOptions, RemoteRepository, Sync } from 'git-documentdb';
+import fs from 'fs-extra';
+import path from 'path';
+import { createRemoteRepository, destroyDBs, removeRemoteRepositories } from './remote_utils';
+
+const reposPrefix = 'test_3way_merge___';
+const localDir = `./test/database_3way_merge`;
+
+let idCounter = 0;
+const serialId = () => {
+  return `${reposPrefix}${idCounter++}`;
+};
+
+beforeEach(function () {
+  // @ts-ignore
+  console.log(`... ${this.currentTest.fullTitle()}`);
+});
+
+before(() => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  GitDocumentDB.plugin(require('git-documentdb-plugin-remote-nodegit'));
+
+  fs.removeSync(path.resolve(localDir));
+});
+
+after(() => {
+  // It may throw error due to memory leak of getCommitLogs()
+  // fs.removeSync(path.resolve(localDir));
+});
+
+// This test needs environment variables:
+//  - GITDDB_GITHUB_USER_URL: URL of your GitHub account
+// e.g.) https://github.com/foo/
+//  - GITDDB_PERSONAL_ACCESS_TOKEN: A personal access token of your GitHub account
+const maybe =
+  process.env.GITDDB_GITHUB_USER_URL && process.env.GITDDB_PERSONAL_ACCESS_TOKEN
+    ? describe
+    : describe.skip;
+
+maybe('<remote-nodegit>', () => {
+  const remoteURLBase = process.env.GITDDB_GITHUB_USER_URL?.endsWith('/')
+    ? process.env.GITDDB_GITHUB_USER_URL
+    : process.env.GITDDB_GITHUB_USER_URL + '/';
+  const token = process.env.GITDDB_PERSONAL_ACCESS_TOKEN!;
+
+  before(async () => {
+    await removeRemoteRepositories(reposPrefix);
+  });
+
 
   describe(': _getOrCreateGitRemote()', () => {
     it('returns "add" when origin is undefined', async () => {
       const remoteURL = remoteURLBase + serialId();
-      const dbName = monoId();
+      const dbName = serialId();
       const gitDDB = new GitDocumentDB({
         dbName,
         localDir,
