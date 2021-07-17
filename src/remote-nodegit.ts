@@ -35,6 +35,11 @@ const name = 'nodegit';
  *
  * @throws {@link Err.CannotConnectError}
  * @throws {@link Err.CannotCloneRepositoryError}
+ *
+ * @throws {@link Err.HttpProtocolRequiredError} (from checkHTTP)
+ * @throws {@link Err.HTTPNetworkError} (from checkHTTP)
+ * @throws {@link Err.RequestTimeoutError} (from checkHTTP)
+ * @throws {@link Err.SocketTimeoutError} (from checkHTTP)
  */
 async function clone(
   workingDir: string,
@@ -138,9 +143,15 @@ async function getOrCreateGitRemote(
  *
  * @throws {@link Err.InvalidURLError}
  * @throws {@link Err.RemoteRepositoryNotFoundError}
- * @throws Error (Other errors from NodeGit.Remote#connect())
+ * @throws {@link Err.FetchPermissionDeniedError}
+ * @throws {@link Error}
  *
- * @internal
+ * @throws {@link Err.HttpProtocolRequiredError} (from createCredentialForGitHub)
+ * @throws {@link Err.RemoteUndefinedPersonalAccessTokenError} (from createCredentialForGitHub)
+ * @throws {@link Err.InvalidRepositoryURLError} (from createCredentialForGitHub)
+ * @throws {@link Err.InvalidSSHKeyPathError} (from createCredentialForSSH)
+ *
+ * @throws {@link Err.InvalidAuthenticationTypeError} (from createCredential)
  */
 // eslint-disable-next-line complexity
 async function checkFetch(
@@ -213,9 +224,14 @@ async function checkFetch(
  * @throws {@link Err.InvalidURLError}
  * @throws {@link Err.RemoteRepositoryNotFoundError}
  * @throws {@link Err.PushPermissionDeniedError}
- * @throws Error (Other errors from NodeGit.Remote#connect())
+ * @throws {@link Error}
  *
- * @internal
+ * @throws {@link Err.HttpProtocolRequiredError} (from createCredentialForGitHub)
+ * @throws {@link Err.RemoteUndefinedPersonalAccessTokenError} (from createCredentialForGitHub)
+ * @throws {@link Err.InvalidRepositoryURLError} (from createCredentialForGitHub)
+ * @throws {@link Err.InvalidSSHKeyPathError} (from createCredentialForSSH)
+ *
+ * @throws {@link Err.InvalidAuthenticationTypeError} (from createCredential)
  */
 // eslint-disable-next-line complexity
 async function checkPush(
@@ -390,6 +406,13 @@ async function validatePushResult(
  * git fetch
  *
  * @throws {@link Err.GitFetchError}
+ *
+ * @throws {@link Err.HttpProtocolRequiredError} (from createCredentialForGitHub)
+ * @throws {@link Err.RemoteUndefinedPersonalAccessTokenError} (from createCredentialForGitHub)
+ * @throws {@link Err.InvalidRepositoryURLError} (from createCredentialForGitHub)
+ * @throws {@link Err.InvalidSSHKeyPathError} (from createCredentialForSSH)
+ *
+ * @throws {@link Err.InvalidAuthenticationTypeError} (from createCredential)
  */
 async function fetch(
   workingDir: string,

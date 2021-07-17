@@ -17,9 +17,9 @@ import {
 /**
  * Insert credential options for GitHub
  *
- * @throws Err.HttpProtocolRequiredError
- * @throws Err.RemoteUndefinedPersonalAccessTokenError
- * @throws Err.InvalidRepositoryURLError
+ * @throws {@link Err.HttpProtocolRequiredError}
+ * @throws {@link Err.RemoteUndefinedPersonalAccessTokenError}
+ * @throws {@link Err.InvalidRepositoryURLError}
  *
  * @internal
  */
@@ -48,6 +48,8 @@ function createCredentialForGitHub(options: RemoteOptions) {
 
 /**
  * Create credential options for SSH
+ *
+ * @throws Err.InvalidSSHKeyPathError
  *
  * @internal
  */
@@ -80,6 +82,13 @@ function createCredentialForSSH(options: RemoteOptions) {
 
 /**
  * Create credential options
+ *
+ * @throws {@link Err.HttpProtocolRequiredError} (from createCredentialForGitHub)
+ * @throws {@link Err.RemoteUndefinedPersonalAccessTokenError} (from createCredentialForGitHub)
+ * @throws {@link Err.InvalidRepositoryURLError} (from createCredentialForGitHub)
+ * @throws {@link Err.InvalidSSHKeyPathError} (from createCredentialForSSH)
+ *
+ * @throws {@link Err.InvalidAuthenticationTypeError}
  *
  * @internal
  */
