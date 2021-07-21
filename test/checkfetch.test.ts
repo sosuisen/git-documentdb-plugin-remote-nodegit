@@ -1,5 +1,151 @@
+/**
+ * GitDocumentDB plugin for remote connection using NodeGit
+ * Copyright (c) Hidekazu Kubota
+ *
+ * This source code is licensed under the Mozilla Public License Version 2.0
+ * found in the LICENSE file in the root directory of this source tree.
+ */
 
-  describe(': _getOrCreateGitRemote()', () => {
+import path from 'path';
+import fs from 'fs-extra';
+import { createDatabase, destroyDBs, removeRemoteRepositories } from './remote_utils';
+import { checkFetch } from '../src/remote-nodegit';
+import expect from 'expect';
+import { Err } from '../src/error';
+import { GitDocumentDB } from 'git-documentdb';
+
+const reposPrefix = 'test_remote_nodegit___';
+const localDir = `./test/database_remote_nodegit`;
+
+let idCounter = 0;
+const serialId = () => {
+  return `${reposPrefix}${idCounter++}`;
+};
+
+beforeEach(function () {
+  // @ts-ignore
+  console.log(`... ${this.currentTest.fullTitle()}`);
+});
+
+before(() => {
+  fs.removeSync(path.resolve(localDir));
+});
+
+after(() => {
+  fs.removeSync(path.resolve(localDir));
+});
+
+// GITDDB_GITHUB_USER_URL: URL of your GitHub account
+// e.g.) https://github.com/foo/
+const maybe =
+  process.env.GITDDB_GITHUB_USER_URL && process.env.GITDDB_PERSONAL_ACCESS_TOKEN
+    ? describe
+    : describe.skip;
+
+maybe('<remote-nodegit>', () => {
+  const remoteURLBase = process.env.GITDDB_GITHUB_USER_URL?.endsWith('/')
+    ? process.env.GITDDB_GITHUB_USER_URL
+    : process.env.GITDDB_GITHUB_USER_URL + '/';
+  const token = process.env.GITDDB_PERSONAL_ACCESS_TOKEN!;
+
+  const invalidFormatURL = 'foo-bar';
+  const invalidHostURL = 'https://foo.bar.example.com/gitddb-plugin/sync-test-invalid.git';
+  const invalidRepositoryURL = remoteURLBase + 'sync-test-invalid.git';
+  const privateRepositoryURL = remoteURLBase + 'test-private.git';
+  const publicRepositoryURL = 'https://github.com/sosuisen/git-documentdb.git';  
+
+  before(async () => {
+    // Remove remote
+    await removeRemoteRepositories(reposPrefix);
+  });
+
+  describe('checkFetch', () => {
+    it('throws HttpProtocolRequiredError', async () => {
+      const dbA: GitDocumentDB = new GitDocumentDB({
+        dbName: serialId(),
+        localDir,
+      });
+      await dbA.open();
+      
+      await expect(checkFetch(dbA.workingDir, { remoteUrl: invalidFormatURL }, dbA.logger)).rejects.toThrowError(Err.HttpProtocolRequiredError);
+
+      await destroyDBs([dbA]);
+    });
+
+    it('throws UndefinedPersonalAccessTokenError', async () => {
+      const dbA: GitDocumentDB = new GitDocumentDB({
+        dbName: serialId(),
+        localDir,
+      });
+      await dbA.open();
+      
+      await expect(checkFetch(dbA.workingDir, { remoteUrl: privateRepositoryURL, connection: { type: 'github' } }, dbA.logger)).rejects.toThrowError(Err.UndefinedPersonalAccessTokenError);
+
+      await destroyDBs([dbA]);
+    });
+
+    it('throws InvalidRepositoryURLError');
+
+    it.skip('throws InvalidSSHKeyPathError');
+
+    it('throws ResolvingAddressError', async () => {
+      const dbA: GitDocumentDB = new GitDocumentDB({
+        dbName: serialId(),
+        localDir,
+      });
+      await dbA.open();
+      
+      // Error: failed to send request
+      await expect(checkFetch(dbA.workingDir, { remoteUrl: invalidHostURL }, dbA.logger)).rejects.toThrowError(Err.ResolvingAddressError);
+
+      await destroyDBs([dbA]);
+    });
+
+    it.skip('throws ResolvingAddressError', async () => {
+      const dbA: GitDocumentDB = new GitDocumentDB({
+        dbName: serialId(),
+        localDir,
+      });
+      await dbA.open();
+      
+      // Error: failed to resolve address
+      await expect(checkFetch(dbA.workingDir, { remoteUrl: 'XXXXX' }, dbA.logger)).rejects.toThrowError(Err.ResolvingAddressError);
+
+      await destroyDBs([dbA]);
+    });
+
+    describe('throws HttpError401AuthorizationRequired', () => {
+      it('when connection setting not found', async () => {
+        const dbA: GitDocumentDB = new GitDocumentDB({
+          dbName: serialId(),
+          localDir,
+        });
+        await dbA.open();
+        
+        // Error: too many redirects or authentication replays
+        await expect(checkFetch(dbA.workingDir, { remoteUrl: privateRepositoryURL }, dbA.logger)).rejects.toThrowError(Err.HTTPError401AuthorizationRequired);
+  
+        await destroyDBs([dbA]);
+      })
+    });
+
+    describe('throws HttpError403Forbidden', () => {
+
+    });
+
+    describe('throws HttpError404NotFound', () => {
+
+    });
+
+    describe('throws CannotFetchError', () => {
+
+    });
+
+  });
+});
+
+/*
+describe(': _getOrCreateGitRemote()', () => {
     it('returns "add" when origin is undefined', async () => {
       const remoteURL = remoteURLBase + serialId();
       const dbName = monoId();
@@ -611,3 +757,4 @@
     await gitDDB.destroy();
   });
   });
+  */

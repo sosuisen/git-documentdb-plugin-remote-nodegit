@@ -6,7 +6,12 @@
   "types": "dist/main.d.ts",
   "scripts": {
     "build": "rm -rf dist/* && npm run lint && tsc --project src/tsconfig.json",
-    "lint": "eslint --fix --ext .ts ."
+    "mocha": "npm run rm-test-db && npx cross-env TS_NODE_FILES=true TS_NODE_PROJECT=tsconfig.mocha.json mocha",
+    "mocha-unit": "npm run rm-test-db && npx cross-env TS_NODE_FILES=true TS_NODE_PROJECT=tsconfig.mocha.json mocha --retries 0 --no-parallel",
+    "test": "npx nyc npm run mocha \"test/**/*.test.ts\" && npm run rm-test-db",
+    "rm-test-db": "rm -rf test/database*",
+    "lint": "eslint --fix --ext .ts .",
+    "remove-remote": "node --experimental-modules --experimental-json-modules remove_remote_repositories.mjs"
   },
   "repository": {
     "type": "git",
@@ -27,16 +32,28 @@
   "homepage": "https://gitddb.com/",
   "dependencies": {
     "@sosuisen/nodegit": "^0.27.3",
-    "isomorphic-git": "^1.9.1",
     "tslog": "^3.2.0"
   },
   "devDependencies": {
+    "@octokit/rest": "^18.6.8",
+    "@octokit/types": "^6.19.1",
+    "@types/fs-extra": "^9.0.12",
+    "@types/mocha": "^8.2.3",
     "@types/node": "^16.3.1",
+    "@types/sinon": "^10.0.2",
     "@typescript-eslint/eslint-plugin": "^4.28.3",
     "@typescript-eslint/parser": "^4.28.3",
+    "cross-env": "^7.0.3",
     "eslint": "^7.30.0",
     "eslint-config-standardize": "^0.9.1",
     "eslint-plugin-prettierx": "^0.18.0",
+    "expect": "^27.0.6",
+    "fs-extra": "^10.0.0",
+    "git-documentdb": "^0.4.0",
+    "isomorphic-git": "^1.9.1",
+    "mocha": "^9.0.2",
+    "sinon": "^11.1.1",
+    "ts-node": "^10.1.0",
     "typescript": "^4.3.5"
   }
 }

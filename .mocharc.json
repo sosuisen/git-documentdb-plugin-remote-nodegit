@@ -1,0 +1,7 @@
+{
+  "require": ["ts-node/register"],
+  "reporter": "list",
+  "parallel": true,
+  "retries": 3,
+  "timeout": 90000
+}
