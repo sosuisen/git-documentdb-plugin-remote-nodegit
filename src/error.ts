@@ -40,8 +40,44 @@ export namespace Err {
   /**
    * @public
    */
+  export class CannotFetchError extends BaseError {
+    constructor(url: string, mes: string) {
+      super(`Cannot fetch from ${url}: ${mes}`);
+    }
+  }
+
+  /**
+   * @public
+   */
+  export class HTTPError401AuthorizationRequired extends BaseError {
+    constructor(url: unknown) {
+      super(`HTTP Error: 401 Authorization required: ${url}`);
+    }
+  }
+
+  /**
+   * @public
+   */
+  export class HTTPError403Forbidden extends BaseError {
+    constructor(url: unknown) {
+      super(`HTTP Error: 403 Forbidden: ${url}`);
+    }
+  }
+
+  /**
+   * @public
+   */
+  export class HTTPError404NotFound extends BaseError {
+    constructor(url: unknown) {
+      super(`HTTP Error: 404 Not Found: ${url}`);
+    }
+  }
+
+  /**
+   * @public
+   */
   export class CannotCloneRepositoryError extends BaseError {
-    constructor(url: string) {
+    constructor(url: unknown) {
       super(`Cannot clone repository: ${url}`);
     }
   }
@@ -56,13 +92,9 @@ export namespace Err {
   }
 
   /**
-   * @remark
-   * Add prefix 'Remote' due to UndefinedPersonalAccessTokenError exists
-   * in GitDocumentDB,
-   *
    * @public
    */
-  export class RemoteUndefinedPersonalAccessTokenError extends BaseError {
+  export class UndefinedPersonalAccessTokenError extends BaseError {
     constructor() {
       super(`Personal Access Token of your GitHub account is needed.`);
     }
@@ -126,17 +158,6 @@ export namespace Err {
   /**
    * @public
    */
-  export class RemoteRepositoryNotFoundError extends BaseError {
-    constructor(url: unknown) {
-      super(
-        `Repository does not exist, or you do not have permission to access the repository: ${url}`
-      );
-    }
-  }
-
-  /**
-   * @public
-   */
   export class PushPermissionDeniedError extends BaseError {
     constructor(mes: unknown) {
       super(`Permission denied to push to the repository: ${mes}`);
@@ -185,7 +206,7 @@ export namespace Err {
    * @public
    */
   export class GitPushError extends BaseError {
-    constructor(mes: string) {
+    constructor(mes: unknown) {
       super(`Push error in Git : ${mes}`);
     }
   }
@@ -194,7 +215,7 @@ export namespace Err {
    * @public
    */
   export class GitFetchError extends BaseError {
-    constructor(mes: string) {
+    constructor(mes: unknown) {
       super(`Fetch error in sync worker: ${mes}`);
     }
   }
@@ -205,6 +226,15 @@ export namespace Err {
   export class NoMergeBaseFoundError extends BaseError {
     constructor() {
       super(`No merge base found`);
+    }
+  }
+
+  /**
+   * @public
+   */
+  export class ResolvingAddressError extends BaseError {
+    constructor() {
+      super(`Cannot resolve address`);
     }
   }
 }

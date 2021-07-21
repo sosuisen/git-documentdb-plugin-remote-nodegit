@@ -18,7 +18,7 @@ import {
  * Insert credential options for GitHub
  *
  * @throws {@link Err.HttpProtocolRequiredError}
- * @throws {@link Err.RemoteUndefinedPersonalAccessTokenError}
+ * @throws {@link Err.UndefinedPersonalAccessTokenError}
  * @throws {@link Err.InvalidRepositoryURLError}
  *
  * @internal
@@ -29,7 +29,7 @@ function createCredentialForGitHub(options: RemoteOptions) {
   }
   const connection = options.connection as ConnectionSettingsGitHub;
   if (options.syncDirection !== 'pull' && !connection.personalAccessToken) {
-    throw new Err.RemoteUndefinedPersonalAccessTokenError();
+    throw new Err.UndefinedPersonalAccessTokenError();
   }
   const urlArray = options.remoteUrl!.replace(/^https?:\/\//, '').split('/');
   // github.com/account_name/repository_name
@@ -84,7 +84,7 @@ function createCredentialForSSH(options: RemoteOptions) {
  * Create credential options
  *
  * @throws {@link Err.HttpProtocolRequiredError} (from createCredentialForGitHub)
- * @throws {@link Err.RemoteUndefinedPersonalAccessTokenError} (from createCredentialForGitHub)
+ * @throws {@link Err.UndefinedPersonalAccessTokenError} (from createCredentialForGitHub)
  * @throws {@link Err.InvalidRepositoryURLError} (from createCredentialForGitHub)
  * @throws {@link Err.InvalidSSHKeyPathError} (from createCredentialForSSH)
  *
