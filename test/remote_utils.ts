@@ -1,171 +1,15 @@
-/* eslint-disable @typescript-eslint/naming-convention */
-import fs from 'fs-extra';
-import { Octokit } from '@octokit/rest';
-import git from 'isomorphic-git';
-import sinon from 'sinon';
-import expect from 'expect';
-import {
-  FILE_REMOVE_TIMEOUT, GIT_DOCUMENTDB_METADATA_DIR, JSON_EXT,
-  ChangedFileDelete,
-  ChangedFileInsert,
-  ChangedFileUpdate,
-  DeleteResult,
-  JsonDoc,
-  PutResult,
-  RemoteOptions,
-  Schema,
-  GitDocumentDB,
-  RemoteRepository } from 'git-documentdb';
-
-const token = process.env.GITDDB_PERSONAL_ACCESS_TOKEN!;
-
 /**
- * Get CommitInfo Object Array from args
+ * GitDocumentDB plugin for remote connection using NodeGit
+ * Copyright (c) Hidekazu Kubota
+ *
+ * This source code is licensed under the Mozilla Public License Version 2.0
+ * found in the LICENSE file in the root directory of this source tree.
  */
-export function getCommitInfo (resultOrMessage: (PutResult | DeleteResult | string)[]) {
-  return resultOrMessage.reduce((acc, current) => {
-    if (typeof current === 'string') {
-      const commit = {
-        oid: expect.any(String),
-        message: current,
-        parent: expect.any(Array),
-        author: {
-          name: expect.any(String),
-          email: expect.any(String),
-          timestamp: expect.any(Number),
-        },
-        committer: {
-          name: expect.any(String),
-          email: expect.any(String),
-          timestamp: expect.any(Number),
-        },
-      };
-      acc.push(commit);
-    }
-    else {
-      acc.push(current.commit);
-    }
-    return acc;
-  }, [] as any[]);
-}
+ import { Octokit } from '@octokit/rest';
+ import { GitDocumentDB, RemoteOptions, Schema, SyncInterface, FILE_REMOVE_TIMEOUT } from 'git-documentdb';
+ import sinon from 'sinon';
 
-/**
- * Get ChangedFile Object from args
- * @remarks 'result' must includes fileOid of 'doc'
- */
-export function getChangedFileInsert (
-  newDoc: JsonDoc,
-  newResult: PutResult | DeleteResult
-): ChangedFileInsert {
-  return {
-    operation: 'insert',
-    new: {
-      _id: newDoc!._id,
-      name: newDoc!._id + JSON_EXT,
-      fileOid: newResult!.fileOid,
-      type: 'json',
-      doc: newDoc,
-    },
-  };
-}
-
-export function getChangedFileUpdate (
-  oldDoc: JsonDoc,
-  oldResult: PutResult | DeleteResult,
-  newDoc: JsonDoc,
-  newResult: PutResult | DeleteResult
-): ChangedFileUpdate {
-  return {
-    operation: 'update',
-    old: {
-      _id: oldDoc!._id,
-      name: oldDoc!._id + JSON_EXT,
-      fileOid: oldResult!.fileOid,
-      type: 'json',
-      doc: oldDoc!,
-    },
-    new: {
-      _id: newDoc!._id,
-      name: newDoc!._id + JSON_EXT,
-      fileOid: newResult!.fileOid,
-      type: 'json',
-      doc: newDoc,
-    },
-  };
-}
-
-export function getChangedFileDelete (
-  oldDoc: JsonDoc,
-  oldResult: PutResult | DeleteResult
-): ChangedFileDelete {
-  return {
-    operation: 'delete',
-    old: {
-      _id: oldDoc!._id,
-      name: oldDoc!._id + JSON_EXT,
-      fileOid: oldResult!.fileOid,
-      type: 'json',
-      doc: oldDoc,
-    },
-  };
-}
-
-export function getChangedFileInsertBySHA (
-  newDoc: JsonDoc,
-  newFileSHA: string
-): ChangedFileInsert {
-  return {
-    operation: 'insert',
-    new: {
-      _id: newDoc!._id,
-      name: newDoc!._id + JSON_EXT,
-      fileOid: newFileSHA,
-      type: 'json',
-      doc: newDoc,
-    },
-  };
-}
-
-export function getChangedFileUpdateBySHA (
-  oldDoc: JsonDoc,
-  oldFileSHA: string,
-  newDoc: JsonDoc,
-  newFileSHA: string
-): ChangedFileUpdate {
-  return {
-    operation: 'update',
-    old: {
-      _id: oldDoc!._id,
-      name: oldDoc!._id + JSON_EXT,
-      fileOid: oldFileSHA,
-      type: 'json',
-      doc: oldDoc!,
-    },
-    new: {
-      _id: newDoc!._id,
-      name: newDoc!._id + JSON_EXT,
-      fileOid: newFileSHA,
-      type: 'json',
-      doc: newDoc,
-    },
-  };
-}
-
-export function getChangedFileDeleteBySHA (
-  oldDoc: JsonDoc,
-  oldFileSHA: string
-): ChangedFileDelete {
-  return {
-    operation: 'delete',
-    old: {
-      _id: oldDoc!._id,
-      name: oldDoc!._id + JSON_EXT,
-      fileOid: oldFileSHA,
-      type: 'json',
-      doc: oldDoc,
-    },
-  };
-}
+ const token = process.env.GITDDB_PERSONAL_ACCESS_TOKEN!;
 
 export async function createDatabase (
   remoteURLBase: string,
@@ -197,7 +41,7 @@ export async function createDatabase (
 
   return [dbA, remoteA];
 }
-
+/*
 export async function createClonedDatabases (
   remoteURLBase: string,
   localDir: string,
@@ -271,6 +115,7 @@ export const destroyRemoteRepository = async (remoteURL: string) => {
       console.debug(err);
     });
 };
+*/
 
 export async function removeRemoteRepositories (reposPrefix: string) {
   // Remove test repositories on remote
@@ -315,85 +160,13 @@ export async function removeRemoteRepositories (reposPrefix: string) {
   // console.log(` - Completed`);
 }
 
-export const listFiles = (gitDDB: GitDocumentDB, dir: string): string[] => {
-  return fs
-    .readdirSync(dir, { withFileTypes: true })
-    .flatMap(dirent =>
-      dirent.isFile()
-        ? [`${dir}/${dirent.name}`.replace(gitDDB.workingDir + '/', '')]
-        : listFiles(gitDDB, `${dir}/${dirent.name}`)
-    )
-    .filter(name => !name.match(/^(\.gitddb|\.git)/));
-};
-
-export const compareWorkingDirAndBlobs = async (
-  gitDDB: GitDocumentDB
-): Promise<boolean> => {
-  const files = listFiles(gitDDB, gitDDB.workingDir);
-
-  const entries: string[] = await git.walk({
-    fs,
-    dir: gitDDB.workingDir,
-    trees: [git.STAGE()],
-    // @ts-ignore
-    // eslint-disable-next-line complexity
-    map: async function (fullDocPath, [entry]) {
-      if (fullDocPath.startsWith(GIT_DOCUMENTDB_METADATA_DIR)) return;
-      if ((await entry?.type()) === 'blob') {
-        return fullDocPath;
-      }
-    },
-  });
-
-  // console.log('# check count: fromFiles: ' + files.length + ', fromIndex: ' + entryCount);
-  if (files.length !== entries.length) {
-    return false;
-  }
-
-  for (const file of files) {
-    // console.log('# check:' + file);
-    // Does index include blob?
-    if (!entries.includes(file)) {
-      return false;
-    }
-
-    // eslint-disable-next-line no-await-in-loop
-    const buf = await fs.readFile(gitDDB.workingDir + '/' + file)!;
-    const data = Uint8Array.from(buf);
-    // eslint-disable-next-line no-await-in-loop
-    const { oid } = await git.hashBlob({ object: data });
-
-    // Does blob exist?
-    // eslint-disable-next-line no-await-in-loop
-    const readBlobResult = await git
-      .readBlob({ fs, dir: gitDDB.workingDir, oid })
-      .catch((err: Error) => console.log(err));
-
-    if (readBlobResult === undefined) {
-      return false;
-    }
-    // console.log('  - rawSize:' + blob?.rawsize());
-  }
-  return true;
-};
-
-export const getWorkingDirDocs = (gitDDB: GitDocumentDB) => {
-  return listFiles(gitDDB, gitDDB.workingDir).map(filepath => {
-    const doc = fs.readJSONSync(gitDDB.workingDir + '/' + filepath);
-    doc._id = filepath.replace(new RegExp(JSON_EXT + '$'), '');
-    return doc;
-  });
-};
-
 export const destroyDBs = async (DBs: GitDocumentDB[]) => {
-  /**
-   * ! NOTICE: sinon.useFakeTimers() is used in each test to skip FileRemoveTimeoutError.
-   */
+  // ! NOTICE: sinon.useFakeTimers() is used in each test to skip FileRemoveTimeoutError.
   const clock = sinon.useFakeTimers();
   Promise.all(
     DBs.map(db =>
       db.destroy().catch(() => {
-        /* throws FileRemoveTimeoutError */
+        // throws FileRemoveTimeoutError
       })
     )
   ).catch(() => {});

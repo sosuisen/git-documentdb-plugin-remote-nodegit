@@ -11,14 +11,8 @@ import nodegit from '@sosuisen/nodegit';
 import git from 'isomorphic-git';
 import { Logger } from 'tslog';
 import { Err } from './error';
-import {
-  NETWORK_RETRY,
-  NETWORK_RETRY_INTERVAL,
-  NETWORK_TIMEOUT,
-} from './const';
 import { RemoteOptions } from './types';
 import { createCredential } from './authentication';
-import { checkHTTP } from './net';
 
 /**
  * @internal
@@ -42,15 +36,7 @@ export const name = 'nodegit';
 /**
  * Clone
  *
- * @throws {@link Err.CannotConnectError}
  * @throws {@link Err.CannotCloneRepositoryError}
- *
- * @throws {@link Err.HttpProtocolRequiredError} (from checkHTTP)
- * @throws {@link Err.HTTPNetworkError} (from checkHTTP)
- * @throws {@link Err.RequestTimeoutError} (from checkHTTP)
- * @throws {@link Err.SocketTimeoutError} (from checkHTTP)
- *
- * @public
  */
 export async function clone(
   workingDir: string,
@@ -69,45 +55,12 @@ export async function clone(
     remoteOptions.remoteUrl !== undefined &&
     remoteOptions.remoteUrl !== ''
   ) {
-    /**
-     * Retry if network errors.
-     */
-    let result: { ok: boolean; code?: number } = {
-      ok: false,
-    };
-    let retry = 0;
-    for (; retry < NETWORK_RETRY; retry++) {
-      // eslint-disable-next-line no-await-in-loop
-      result = await checkHTTP(remoteOptions.remoteUrl!, NETWORK_TIMEOUT).catch(
-        (err) => err
-      );
-      if (result.ok) {
-        break;
-      }
-      else {
-        logger.debug(
-          `NetworkError in cloning: ${remoteOptions.remoteUrl}, ` + result
-        );
-      }
-      // eslint-disable-next-line no-await-in-loop
-      await sleep(NETWORK_RETRY_INTERVAL);
-    }
-    if (!result.ok) {
-      // Set retry number for code test
-      throw new Err.CannotConnectError(
-        retry,
-        remoteOptions.remoteUrl,
-        result.toString()
-      );
-    }
-
     await nodegit.Clone.clone(remoteOptions.remoteUrl, workingDir, {
       fetchOpts: {
         callbacks: createCredential(remoteOptions),
       },
     }).catch((err) => {
       // Errors except CannotConnectError are handled in combine functions.
-
       logger!.debug(`Error in cloning: ${remoteOptions.remoteUrl}, ` + err);
       throw new Err.CannotCloneRepositoryError(remoteOptions.remoteUrl!);
     });
@@ -152,13 +105,14 @@ async function getOrCreateGitRemote(
 /**
  * Check connection by FETCH
  *
- * @throws {@link Err.InvalidURLError}
- * @throws {@link Err.RemoteRepositoryNotFoundError}
- * @throws {@link Err.FetchPermissionDeniedError}
- * @throws {@link Error}
+ * @throws {@link Err.ResolvingAddressError}
+ * @throws {@link Err.HTTPError401AuthorizationRequired}
+ * @throws {@link Err.HTTPError403Forbidden}
+ * @throws {@link Err.HTTPError404NotFound}
+ * @throws {@link Err.CannotFetchError}
  *
  * @throws {@link Err.HttpProtocolRequiredError} (from createCredentialForGitHub)
- * @throws {@link Err.RemoteUndefinedPersonalAccessTokenError} (from createCredentialForGitHub)
+ * @throws {@link Err.UndefinedPersonalAccessTokenError} (from createCredentialForGitHub)
  * @throws {@link Err.InvalidRepositoryURLError} (from createCredentialForGitHub)
  * @throws {@link Err.InvalidSSHKeyPathError} (from createCredentialForSSH)
  *
@@ -171,7 +125,7 @@ export async function checkFetch(
   workingDir: string,
   options: RemoteOptions,
   logger?: Logger
-): Promise<'exist' | 'not_exist'> {
+): Promise<boolean> {
   logger ??= new Logger({
     name: 'plugin-nodegit',
     minLevel: 'trace',
@@ -201,19 +155,14 @@ export async function checkFetch(
     case error === 'undefined':
       break;
     case error.startsWith('Error: unsupported URL protocol'):
-    case error.startsWith('Error: failed to resolve address'):
-    case error.startsWith('Error: failed to send request'):
-      throw new Err.InvalidURLError(remoteURL + ':' + error);
-    case error.startsWith('Error: unexpected HTTP status code: 4'): // 401, 404 on Ubuntu
-    case error.startsWith('Error: request failed with status code: 4'): // 401, 404 on Windows
-    case error.startsWith('Error: Method connect has thrown an error'):
-    case error.startsWith('Error: ERROR: Repository not found'):
-      // Remote repository does not exist, or you do not have permission to the private repository
-      if (options.connection?.type === 'github') {
-        return 'not_exist';
-      }
-      throw new Err.RemoteRepositoryNotFoundError(remoteURL + ':' + error);
+      throw new Err.HttpProtocolRequiredError(remoteURL);
 
+    case error.startsWith('Error: failed to send request'):
+    case error.startsWith('Error: failed to resolve address'):
+      throw new Err.ResolvingAddressError();
+
+    case error.startsWith('Error: unexpected HTTP status code: 401'): // 401 on Ubuntu
+    case error.startsWith('Error: request failed with status code: 401'): // 401 on Windows
     case error.startsWith(
       'Error: remote credential provider returned an invalid cred type'
     ): // on Ubuntu
@@ -223,12 +172,19 @@ export async function checkFetch(
     case error.startsWith(
       'Error: too many redirects or authentication replays'
     ):
-      throw new Err.FetchPermissionDeniedError(error);
+      throw new Err.HTTPError401AuthorizationRequired(remoteURL);
+
+    case error.startsWith('Error: unexpected HTTP status code: 404'): // 404 on Ubuntu
+    case error.startsWith('Error: request failed with status code: 404'): // 404 on Windows
+    case error.startsWith('Error: ERROR: Repository not found'):
+      throw new Err.HTTPError404NotFound(remoteURL);
+
+    case error.startsWith('Error: Method connect has thrown an error'):
     default:
-      throw new Error(error);
+      throw new Err.CannotFetchError(remoteURL, error);
   }
 
-  return 'exist';
+  return true;
 }
 
 /**
@@ -240,7 +196,7 @@ export async function checkFetch(
  * @throws {@link Error}
  *
  * @throws {@link Err.HttpProtocolRequiredError} (from createCredentialForGitHub)
- * @throws {@link Err.RemoteUndefinedPersonalAccessTokenError} (from createCredentialForGitHub)
+ * @throws {@link Err.UndefinedPersonalAccessTokenError} (from createCredentialForGitHub)
  * @throws {@link Err.InvalidRepositoryURLError} (from createCredentialForGitHub)
  * @throws {@link Err.InvalidSSHKeyPathError} (from createCredentialForSSH)
  *
@@ -288,7 +244,7 @@ async function checkPush(
     case error.startsWith('Error: Method connect has thrown an error'):
     case error.startsWith('Error: ERROR: Repository not found'): {
       // Remote repository does not exist, or you do not have permission to the private repository
-      throw new Err.RemoteRepositoryNotFoundError(options.remoteUrl);
+      throw new Err.HTTPError404NotFound(options.remoteUrl!);
     }
     // Invalid personal access token
     // Personal access token is read only
@@ -425,7 +381,7 @@ async function validatePushResult(
  * @throws {@link Err.GitFetchError}
  *
  * @throws {@link Err.HttpProtocolRequiredError} (from createCredentialForGitHub)
- * @throws {@link Err.RemoteUndefinedPersonalAccessTokenError} (from createCredentialForGitHub)
+ * @throws {@link Err.UndefinedPersonalAccessTokenError} (from createCredentialForGitHub)
  * @throws {@link Err.InvalidRepositoryURLError} (from createCredentialForGitHub)
  * @throws {@link Err.InvalidSSHKeyPathError} (from createCredentialForSSH)
  *
