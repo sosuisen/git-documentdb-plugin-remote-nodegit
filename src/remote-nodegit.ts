@@ -76,11 +76,9 @@ type GitRemoteAction = 'add' | 'change' | 'exist';
  * Get or create Git remote named 'origin'
  *
  * (git remote add)
- *
- * @internal
  */
 // eslint-disable-next-line complexity
-async function getOrCreateGitRemote(
+export async function getOrCreateGitRemote(
   repos: nodegit.Repository,
   remoteURL: string
 ): Promise<[GitRemoteAction, nodegit.Remote]> {
@@ -105,6 +103,7 @@ async function getOrCreateGitRemote(
 /**
  * Check connection by FETCH
  *
+ * @throws {@link Err.HttpProtocolRequiredError}
  * @throws {@link Err.ResolvingAddressError}
  * @throws {@link Err.HTTPError401AuthorizationRequired}
  * @throws {@link Err.HTTPError403Forbidden}
@@ -155,11 +154,11 @@ export async function checkFetch(
     case error === 'undefined':
       break;
     case error.startsWith('Error: unsupported URL protocol'):
-      throw new Err.HttpProtocolRequiredError(remoteURL);
+      throw new Err.HttpProtocolRequiredError(error);
 
     case error.startsWith('Error: failed to send request'):
     case error.startsWith('Error: failed to resolve address'):
-      throw new Err.ResolvingAddressError();
+      throw new Err.ResolvingAddressError(error);
 
     case error.startsWith('Error: unexpected HTTP status code: 401'): // 401 on Ubuntu
     case error.startsWith('Error: request failed with status code: 401'): // 401 on Windows

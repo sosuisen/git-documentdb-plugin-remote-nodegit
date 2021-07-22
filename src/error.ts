@@ -113,9 +113,19 @@ export namespace Err {
   /**
    * @public
    */
+  export class InvalidAuthenticationTypeError extends BaseError {
+    constructor(type: unknown) {
+      const e = `Invalid authentication type: ${type}`;
+      super(e);
+    }
+  }
+
+  /**
+   * @public
+   */
   export class HttpProtocolRequiredError extends BaseError {
-    constructor(url: unknown) {
-      super(`HTTP protocol is required: ${url}`);
+    constructor(mes: unknown) {
+      super(`HTTP protocol is required: ${mes}`);
     }
   }
 
@@ -233,8 +243,8 @@ export namespace Err {
    * @public
    */
   export class ResolvingAddressError extends BaseError {
-    constructor() {
-      super(`Cannot resolve address`);
+    constructor(mes: unknown) {
+      super(`Cannot resolve address: ${mes}`);
     }
   }
 }

@@ -25,7 +25,9 @@ import {
  */
 function createCredentialForGitHub(options: RemoteOptions) {
   if (!options.remoteUrl!.match(/^https?:\/\//)) {
-    throw new Err.HttpProtocolRequiredError(options.remoteUrl!);
+    throw new Err.HttpProtocolRequiredError(
+      'Error in createCredentialForGitHub'
+    );
   }
   const connection = options.connection as ConnectionSettingsGitHub;
   if (options.syncDirection !== 'pull' && !connection.personalAccessToken) {
