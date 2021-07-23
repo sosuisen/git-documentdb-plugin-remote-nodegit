@@ -7,12 +7,12 @@
  */
 
 import fs from 'fs';
-import nodegit from '@sosuisen/nodegit';
+import nodegit, { RemoteCallbacks } from '@sosuisen/nodegit';
 import git from 'isomorphic-git';
 import { Logger } from 'tslog';
 import { Err } from './error';
 import { RemoteOptions } from './types';
-import { createCredential } from './authentication';
+import { createCredentialCallback } from './authentication';
 
 /**
  * @internal
@@ -57,7 +57,7 @@ export async function clone(
   ) {
     await nodegit.Clone.clone(remoteOptions.remoteUrl, workingDir, {
       fetchOpts: {
-        callbacks: createCredential(remoteOptions),
+        callbacks: createCredentialCallback(remoteOptions),
       },
     }).catch((err) => {
       // Errors except CannotConnectError are handled in combine functions.
@@ -106,12 +106,10 @@ export async function getOrCreateGitRemote(
  * @throws {@link Err.InvalidURLFormatError}
  * @throws {@link Err.ResolvingAddressError}
  * @throws {@link Err.HTTPError401AuthorizationRequired}
- * @throws {@link Err.HTTPError403Forbidden}
  * @throws {@link Err.HTTPError404NotFound}
  * @throws {@link Err.CannotFetchError}
  *
  * @throws {@link Err.HttpProtocolRequiredError} (from createCredentialForGitHub)
- * @throws {@link Err.UndefinedPersonalAccessTokenError} (from createCredentialForGitHub)
  * @throws {@link Err.InvalidRepositoryURLError} (from createCredentialForGitHub)
  * @throws {@link Err.InvalidSSHKeyPathError} (from createCredentialForSSH)
  *
@@ -132,7 +130,7 @@ export async function checkFetch(
     displayFunctionName: false,
     displayFilePath: 'hidden',
   });
-  const credential = createCredential(options);
+  const callbacks = createCredentialCallback(options);
   const repos = await nodegit.Repository.open(workingDir);
   // Get NodeGit.Remote
   const [gitResult, remote] = await getOrCreateGitRemote(
@@ -144,10 +142,92 @@ export async function checkFetch(
   const remoteURL = remote.url();
   const error = String(
     await remote
-      .connect(nodegit.Enums.DIRECTION.FETCH, credential)
+      .connect(nodegit.Enums.DIRECTION.FETCH, callbacks)
       .catch((err) => err)
   );
   await remote.disconnect();
+
+  // if (error !== 'undefined') console.warn('connect fetch error: ' + error);
+  switch (true) {
+    case error === 'undefined':
+      break;
+    case error.startsWith('Error: unsupported URL protocol'):
+    case error.startsWith('Error: malformed URL'):
+      throw new Err.InvalidURLFormatError(error);
+
+    case error.startsWith('Error: failed to send request'):
+    case error.startsWith('Error: failed to resolve address'):
+      throw new Err.ResolvingAddressError(error);
+
+    case error.startsWith('Error: unexpected HTTP status code: 401'): // 401 on Ubuntu
+    case error.startsWith('Error: request failed with status code: 401'): // 401 on Windows
+    case error.startsWith('Error: Method connect has thrown an error'):
+    case error.startsWith(
+      'Error: remote credential provider returned an invalid cred type'
+    ): // on Ubuntu
+    case error.startsWith(
+      'Failed to retrieve list of SSH authentication methods'
+    ):
+    case error.startsWith(
+      'Error: too many redirects or authentication replays'
+    ):
+      throw new Err.HTTPError401AuthorizationRequired(error);
+
+    case error.startsWith('Error: unexpected HTTP status code: 404'): // 404 on Ubuntu
+    case error.startsWith('Error: request failed with status code: 404'): // 404 on Windows
+    case error.startsWith('Error: ERROR: Repository not found'):
+      throw new Err.HTTPError404NotFound(error);
+
+    default:
+      throw new Err.CannotFetchError(error);
+  }
+
+  return true;
+}
+
+/**
+ * git fetch
+ *
+ *
+ * @throws {@link Err.InvalidURLFormatError}
+ * @throws {@link Err.ResolvingAddressError}
+ * @throws {@link Err.HTTPError401AuthorizationRequired}
+ * @throws {@link Err.HTTPError404NotFound}
+ * @throws {@link Err.CannotFetchError}
+ *
+ * @throws {@link Err.HttpProtocolRequiredError} (from createCredentialForGitHub)
+ * @throws {@link Err.InvalidRepositoryURLError} (from createCredentialForGitHub)
+ * @throws {@link Err.InvalidSSHKeyPathError} (from createCredentialForSSH)
+ *
+ * @throws {@link Err.InvalidAuthenticationTypeError} (from createCredential)
+ *
+ * @public
+ */
+// eslint-disable-next-line complexity
+export async function fetch(
+  workingDir: string,
+  remoteOptions: RemoteOptions,
+  logger?: Logger
+) {
+  logger ??= new Logger({
+    name: 'plugin-nodegit',
+    minLevel: 'trace',
+    displayDateTime: false,
+    displayFunctionName: false,
+    displayFilePath: 'hidden',
+  });
+
+  logger.debug(`sync_worker: fetch: ${remoteOptions.remoteUrl}`);
+
+  const repos = await nodegit.Repository.open(workingDir);
+  const callbacks = createCredentialCallback(remoteOptions);
+  const error = await repos
+    .fetch('origin', {
+      callbacks,
+    })
+    .catch((err) => err);
+  // It leaks memory if not cleanup
+  repos.cleanup();
 
   // if (error !== 'undefined') console.warn('connect fetch error: ' + error);
   switch (true) {
@@ -183,8 +263,6 @@ export async function checkFetch(
     default:
       throw new Err.CannotFetchError(error);
   }
-
-  return true;
 }
 
 /**
@@ -196,7 +274,6 @@ export async function checkFetch(
  * @throws {@link Error}
  *
  * @throws {@link Err.HttpProtocolRequiredError} (from createCredentialForGitHub)
- * @throws {@link Err.UndefinedPersonalAccessTokenError} (from createCredentialForGitHub)
  * @throws {@link Err.InvalidRepositoryURLError} (from createCredentialForGitHub)
  * @throws {@link Err.InvalidSSHKeyPathError} (from createCredentialForSSH)
  *
@@ -215,7 +292,7 @@ async function checkPush(
     displayFunctionName: false,
     displayFilePath: 'hidden',
   });
-  const credential = createCredential(options);
+  const callbacks = createCredentialCallback(options);
   const repos = await nodegit.Repository.open(workingDir);
   // Get NodeGit.Remote
   const [gitResult, remote] = await getOrCreateGitRemote(
@@ -226,7 +303,7 @@ async function checkPush(
 
   const error = String(
     await remote
-      .connect(nodegit.Enums.DIRECTION.PUSH, credential)
+      .connect(nodegit.Enums.DIRECTION.PUSH, callbacks)
       .catch((err) => err)
   );
   await remote.disconnect();
@@ -300,10 +377,10 @@ export async function push(
 ): Promise<void> {
   const repos = await nodegit.Repository.open(workingDir);
   const remote: nodegit.Remote = await repos.getRemote('origin');
-  const credential = createCredential(remoteOptions);
+  const callbacks = createCredentialCallback(remoteOptions);
   await remote
     .push(['refs/heads/main:refs/heads/main'], {
-      callbacks: credential,
+      callbacks,
     })
     .catch((err: Error) => {
       if (
@@ -316,7 +393,7 @@ export async function push(
       throw new Err.GitPushError(err.message);
     });
 
-  await validatePushResult(repos, workingDir, credential);
+  await validatePushResult(repos, workingDir, callbacks);
 
   // It leaks memory if not cleanup
   repos.cleanup();
@@ -332,11 +409,11 @@ export async function push(
 async function validatePushResult(
   repos: nodegit.Repository,
   workingDir: string,
-  credential: { credentials: any }
+  callbacks: RemoteCallbacks
 ): Promise<void> {
   await repos
     .fetch('origin', {
-      callbacks: credential,
+      callbacks,
     })
     .catch((err) => {
       throw new Err.GitFetchError(err.message);
@@ -373,46 +450,4 @@ async function validatePushResult(
   else if (distance.behind > 0) {
     throw new Err.UnfetchedCommitExistsError();
   }
-}
-
-/**
- * git fetch
- *
- * @throws {@link Err.GitFetchError}
- *
- * @throws {@link Err.HttpProtocolRequiredError} (from createCredentialForGitHub)
- * @throws {@link Err.UndefinedPersonalAccessTokenError} (from createCredentialForGitHub)
- * @throws {@link Err.InvalidRepositoryURLError} (from createCredentialForGitHub)
- * @throws {@link Err.InvalidSSHKeyPathError} (from createCredentialForSSH)
- *
- * @throws {@link Err.InvalidAuthenticationTypeError} (from createCredential)
- *
- * @public
- */
-export async function fetch(
-  workingDir: string,
-  remoteOptions: RemoteOptions,
-  logger?: Logger
-) {
-  logger ??= new Logger({
-    name: 'plugin-nodegit',
-    minLevel: 'trace',
-    displayDateTime: false,
-    displayFunctionName: false,
-    displayFilePath: 'hidden',
-  });
-
-  logger.debug(`sync_worker: fetch: ${remoteOptions.remoteUrl}`);
-
-  const repos = await nodegit.Repository.open(workingDir);
-  const credential = createCredential(remoteOptions);
-  await repos
-    .fetch('origin', {
-      callbacks: credential,
-    })
-    .catch((err) => {
-      throw new Err.GitFetchError(err.message);
-    });
-  // It leaks memory if not cleanup
-  repos.cleanup();
 }

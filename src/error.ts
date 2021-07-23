@@ -94,15 +94,6 @@ export namespace Err {
   /**
    * @public
    */
-  export class UndefinedPersonalAccessTokenError extends BaseError {
-    constructor() {
-      super(`Personal Access Token of your GitHub account is needed.`);
-    }
-  }
-
-  /**
-   * @public
-   */
   export class InvalidSSHKeyPathError extends BaseError {
     constructor() {
       const e = `Invalid SSH key path`;

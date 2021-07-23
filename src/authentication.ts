@@ -19,7 +19,6 @@ import {
  * Insert credential options for GitHub
  *
  * @throws {@link Err.HttpProtocolRequiredError}
- * @throws {@link Err.UndefinedPersonalAccessTokenError}
  * @throws {@link Err.InvalidRepositoryURLError}
  *
  * @internal
@@ -31,8 +30,8 @@ function createCredentialForGitHub(options: RemoteOptions) {
     );
   }
   const connection = options.connection as ConnectionSettingsGitHub;
-  if (options.syncDirection !== 'pull' && !connection.personalAccessToken) {
-    throw new Err.UndefinedPersonalAccessTokenError();
+  if (!connection.personalAccessToken) {
+    return undefined;
   }
   const urlArray = options.remoteUrl!.replace(/^https?:\/\//, '').split('/');
   // github.com/account_name/repository_name
@@ -87,7 +86,6 @@ function createCredentialForSSH(options: RemoteOptions) {
  * Create credential options
  *
  * @throws {@link Err.HttpProtocolRequiredError} (from createCredentialForGitHub)
- * @throws {@link Err.UndefinedPersonalAccessTokenError} (from createCredentialForGitHub)
  * @throws {@link Err.InvalidRepositoryURLError} (from createCredentialForGitHub)
  * @throws {@link Err.InvalidSSHKeyPathError} (from createCredentialForSSH)
  *
@@ -95,7 +93,7 @@ function createCredentialForSSH(options: RemoteOptions) {
  *
  * @internal
  */
-export function createCredential(options: RemoteOptions) {
+export function createCredentialCallback(options: RemoteOptions) {
   options.connection ??= { type: 'none' };
   let cred: any;
   if (options.connection.type === 'github') {
@@ -112,9 +110,15 @@ export function createCredential(options: RemoteOptions) {
     throw new Err.InvalidAuthenticationTypeError(options.connection.type);
   }
 
-  const callbacks = {
-    credentials: cred,
-  };
+  let callbacks;
+  if (cred !== undefined) {
+    callbacks = {
+      credentials: cred,
+    };
+  }
+  else {
+    callbacks = new nodegit.RemoteCallbacks();
+  }
 
   if (process.platform === 'darwin') {
     // @ts-ignore
