@@ -42,10 +42,11 @@ after(() => {
  *   GITDDB_GITHUB_USER_URL: URL of your GitHub account
  *     e.g.) https://github.com/foo/
  *   GITDDB_PERSONAL_ACCESS_TOKEN: The personal access token of your GitHub account
+ *   GITDDB_GITHUB_PRIVATE_REPOS_OF_ANOTHER_USER: Private repository of another user
+ *     e.g.) https://github.com/bar/baz.git
  * GitHub repositories:
  *   remoteURLBase + 'test-private.git' must be a private repository.
  */
-
 const userHome = process.env[process.platform == "win32" ? "USERPROFILE" : "HOME"] ?? '';
 
 const maybe =
@@ -54,6 +55,8 @@ const maybe =
     : describe.skip;
 
 maybe('<remote-nodegit>', () => {
+  const privateRepositoryOfAnotherUser = process.env.GITDDB_GITHUB_PRIVATE_REPOS_OF_ANOTHER_USER;
+
   const remoteURLBase = process.env.GITDDB_GITHUB_USER_URL?.endsWith('/')
     ? process.env.GITDDB_GITHUB_USER_URL
     : process.env.GITDDB_GITHUB_USER_URL + '/';
@@ -232,7 +235,22 @@ maybe('<remote-nodegit>', () => {
     });
 
     describe('throws HttpError403Forbidden', () => {
+      it.only('when access repository of another account with your account', async () => {
+        const dbA: GitDocumentDB = new GitDocumentDB({
+          dbName: serialId(),
+          localDir,
+        });
+        await dbA.open();
 
+        const remoteUrl = privateRepositoryOfAnotherUser;
+
+        const err = await checkFetch(dbA.workingDir, { remoteUrl,  connection: { type: 'github', personalAccessToken: token } }, dbA.logger).catch(err => err);
+
+        expect(err).toBeInstanceOf(Err.HTTPError403Forbidden);
+        expect(err.message).toMatch(/^HTTP Error: 401 Authorization required: Error: request failed with status code: 401/);
+
+        await destroyDBs([dbA]);
+      });
     });
 
     describe('throws HttpError404NotFound', () => {
