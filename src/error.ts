@@ -41,8 +41,8 @@ export namespace Err {
    * @public
    */
   export class CannotFetchError extends BaseError {
-    constructor(url: string, mes: string) {
-      super(`Cannot fetch from ${url}: ${mes}`);
+    constructor(mes: unknown) {
+      super(`Cannot fetch: ${mes}`);
     }
   }
 
@@ -50,8 +50,8 @@ export namespace Err {
    * @public
    */
   export class HTTPError401AuthorizationRequired extends BaseError {
-    constructor(url: unknown) {
-      super(`HTTP Error: 401 Authorization required: ${url}`);
+    constructor(mes: unknown) {
+      super(`HTTP Error: 401 Authorization required: ${mes}`);
     }
   }
 
@@ -59,8 +59,8 @@ export namespace Err {
    * @public
    */
   export class HTTPError403Forbidden extends BaseError {
-    constructor(url: unknown) {
-      super(`HTTP Error: 403 Forbidden: ${url}`);
+    constructor(mes: unknown) {
+      super(`HTTP Error: 403 Forbidden: ${mes}`);
     }
   }
 
@@ -68,8 +68,8 @@ export namespace Err {
    * @public
    */
   export class HTTPError404NotFound extends BaseError {
-    constructor(url: unknown) {
-      super(`HTTP Error: 404 Not Found: ${url}`);
+    constructor(mes: unknown) {
+      super(`HTTP Error: 404 Not Found: ${mes}`);
     }
   }
 
@@ -77,8 +77,8 @@ export namespace Err {
    * @public
    */
   export class CannotCloneRepositoryError extends BaseError {
-    constructor(url: unknown) {
-      super(`Cannot clone repository: ${url}`);
+    constructor(mes: unknown) {
+      super(`Cannot clone repository: ${mes}`);
     }
   }
 
@@ -123,9 +123,9 @@ export namespace Err {
   /**
    * @public
    */
-  export class HttpProtocolRequiredError extends BaseError {
+  export class InvalidURLFormatError extends BaseError {
     constructor(mes: unknown) {
-      super(`HTTP protocol is required: ${mes}`);
+      super(`URL format is invalid: ${mes}`);
     }
   }
 
@@ -153,15 +153,6 @@ export namespace Err {
   export class HTTPNetworkError extends BaseError {
     constructor(mes: unknown) {
       super(`HTTPNetworkError: ${mes}`);
-    }
-  }
-
-  /**
-   * @public
-   */
-  export class InvalidURLError extends BaseError {
-    constructor(url: unknown) {
-      super(`Invalid url: ${url}'`);
     }
   }
 

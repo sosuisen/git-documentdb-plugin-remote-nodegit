@@ -62,7 +62,7 @@ export async function clone(
     }).catch((err) => {
       // Errors except CannotConnectError are handled in combine functions.
       logger!.debug(`Error in cloning: ${remoteOptions.remoteUrl}, ` + err);
-      throw new Err.CannotCloneRepositoryError(remoteOptions.remoteUrl!);
+      throw new Err.CannotCloneRepositoryError(err.message);
     });
   }
 }
@@ -103,7 +103,7 @@ export async function getOrCreateGitRemote(
 /**
  * Check connection by FETCH
  *
- * @throws {@link Err.HttpProtocolRequiredError}
+ * @throws {@link Err.InvalidURLFormatError}
  * @throws {@link Err.ResolvingAddressError}
  * @throws {@link Err.HTTPError401AuthorizationRequired}
  * @throws {@link Err.HTTPError403Forbidden}
@@ -154,7 +154,8 @@ export async function checkFetch(
     case error === 'undefined':
       break;
     case error.startsWith('Error: unsupported URL protocol'):
-      throw new Err.HttpProtocolRequiredError(error);
+    case error.startsWith('Error: malformed URL'):
+      throw new Err.InvalidURLFormatError(error);
 
     case error.startsWith('Error: failed to send request'):
     case error.startsWith('Error: failed to resolve address'):
@@ -171,16 +172,16 @@ export async function checkFetch(
     case error.startsWith(
       'Error: too many redirects or authentication replays'
     ):
-      throw new Err.HTTPError401AuthorizationRequired(remoteURL);
+      throw new Err.HTTPError401AuthorizationRequired(error);
 
     case error.startsWith('Error: unexpected HTTP status code: 404'): // 404 on Ubuntu
     case error.startsWith('Error: request failed with status code: 404'): // 404 on Windows
     case error.startsWith('Error: ERROR: Repository not found'):
-      throw new Err.HTTPError404NotFound(remoteURL);
+      throw new Err.HTTPError404NotFound(error);
 
     case error.startsWith('Error: Method connect has thrown an error'):
     default:
-      throw new Err.CannotFetchError(remoteURL, error);
+      throw new Err.CannotFetchError(error);
   }
 
   return true;
@@ -189,7 +190,7 @@ export async function checkFetch(
 /**
  * Check connection by PUSH
  *
- * @throws {@link Err.InvalidURLError}
+ * @throws {@link Err.InvalidURLFormatError}
  * @throws {@link Err.RemoteRepositoryNotFoundError}
  * @throws {@link Err.PushPermissionDeniedError}
  * @throws {@link Error}
@@ -237,7 +238,7 @@ async function checkPush(
     case error.startsWith('Error: unsupported URL protocol'):
     case error.startsWith('Error: failed to resolve address'):
     case error.startsWith('Error: failed to send request'):
-      throw new Err.InvalidURLError(options.remoteUrl!);
+      throw new Err.InvalidURLFormatError(options.remoteUrl!);
     case error.startsWith('Error: unexpected HTTP status code: 4'): // 401, 404 on Ubuntu
     case error.startsWith('Error: request failed with status code: 4'): // 401, 404 on Windows
     case error.startsWith('Error: Method connect has thrown an error'):

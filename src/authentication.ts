@@ -7,6 +7,7 @@
  */
 
 import nodegit from '@sosuisen/nodegit';
+import fs from 'fs-extra';
 import { Err } from './error';
 import {
   ConnectionSettingsGitHub,
@@ -25,8 +26,8 @@ import {
  */
 function createCredentialForGitHub(options: RemoteOptions) {
   if (!options.remoteUrl!.match(/^https?:\/\//)) {
-    throw new Err.HttpProtocolRequiredError(
-      'Error in createCredentialForGitHub'
+    throw new Err.InvalidURLFormatError(
+      'http protocol required in createCredentialForGitHub'
     );
   }
   const connection = options.connection as ConnectionSettingsGitHub;
@@ -59,13 +60,13 @@ function createCredentialForSSH(options: RemoteOptions) {
   const connection = options.connection as ConnectionSettingsSSH;
   if (
     connection.privateKeyPath === undefined ||
-    connection.privateKeyPath === ''
+    !fs.existsSync(connection.privateKeyPath)
   ) {
     throw new Err.InvalidSSHKeyPathError();
   }
   if (
     connection.publicKeyPath === undefined ||
-    connection.publicKeyPath === ''
+    !fs.existsSync(connection.publicKeyPath)
   ) {
     throw new Err.InvalidSSHKeyPathError();
   }
