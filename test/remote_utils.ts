@@ -6,7 +6,7 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
  import { Octokit } from '@octokit/rest';
- import { GitDocumentDB, RemoteOptions, Schema, SyncInterface, FILE_REMOVE_TIMEOUT } from 'git-documentdb';
+ import { GitDocumentDB, RemoteOptions, Schema, SyncInterface, FILE_REMOVE_TIMEOUT, RemoteRepository } from 'git-documentdb';
  import sinon from 'sinon';
 
  const token = process.env.GITDDB_PERSONAL_ACCESS_TOKEN!;
@@ -85,7 +85,7 @@ export async function createClonedDatabases (
 
   return [dbA, dbB, remoteA, remoteB];
 }
-
+*/
 export const createRemoteRepository = async (remoteURL: string) => {
   await new RemoteRepository({
     remoteUrl: remoteURL,
@@ -100,7 +100,7 @@ export const createRemoteRepository = async (remoteURL: string) => {
       console.debug(err);
     });
 };
-
+/*
 export const destroyRemoteRepository = async (remoteURL: string) => {
   await new RemoteRepository({
     remoteUrl: remoteURL,

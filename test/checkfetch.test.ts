@@ -44,6 +44,9 @@ after(() => {
  *   GITDDB_PERSONAL_ACCESS_TOKEN: The personal access token of your GitHub account
  * GitHub repositories:
  *   remoteURLBase + 'test-private.git' must be a private repository.
+ * SSH keys
+ *   userHome/.ssh/invalid-test.pub: invalid public key
+ *   userHome/.ssh/invalid-test: invalid private key
  */
 const userHome = process.env[process.platform == "win32" ? "USERPROFILE" : "HOME"] ?? '';
 
@@ -169,7 +172,6 @@ maybe('<remote-nodegit> checkFetch', () => {
     }, dbA.logger).catch(err => err);
 
     expect(err).toBeInstanceOf(Err.ResolvingAddressError);
-    // TODO: How to invoke this error      
     expect(err.message).toMatch(/^Cannot resolve address: Error: failed to resolve address/);
 
     await destroyDBs([dbA]);

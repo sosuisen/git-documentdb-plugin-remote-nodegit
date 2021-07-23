@@ -175,7 +175,6 @@ export async function checkFetch(
 
     case error.startsWith('Error: unexpected HTTP status code: 404'): // 404 on Ubuntu
     case error.startsWith('Error: request failed with status code: 404'): // 404 on Windows
-    case error.startsWith('Error: ERROR: Repository not found'):
       throw new Err.HTTPError404NotFound(error);
 
     default:
@@ -230,38 +229,38 @@ export async function fetch(
   repos.cleanup();
 
   let error;
-  if (res !== undefined) {
+  if (res !== undefined && res !== null) {
     error = res.message;
   }
+  console.log(error);
   // if (error !== 'undefined') console.warn('connect fetch error: ' + error);
   switch (true) {
-    case error === 'undefined':
+    case error === undefined || error === null:
       break;
     case error.startsWith("remote 'origin' does not exist"):
-    case error.startsWith('Error: malformed URL'):
+      throw new Err.InvalidGitRemoteError(error);
+    case error.startsWith('unsupported URL protocol'):
+    case error.startsWith('malformed URL'):
       throw new Err.InvalidURLFormatError(error);
 
-    case error.startsWith('Error: failed to send request'):
-    case error.startsWith('Error: failed to resolve address'):
+    case error.startsWith('failed to send request'):
+    case error.startsWith('failed to resolve address'):
       throw new Err.ResolvingAddressError(error);
 
-    case error.startsWith('Error: unexpected HTTP status code: 401'): // 401 on Ubuntu
-    case error.startsWith('Error: request failed with status code: 401'): // 401 on Windows
-    case error.startsWith('Error: Method connect has thrown an error'):
+    case error.startsWith('unexpected HTTP status code: 401'): // 401 on Ubuntu
+    case error.startsWith('request failed with status code: 401'): // 401 on Windows
+    case error.startsWith('Method connect has thrown an error'):
     case error.startsWith(
-      'Error: remote credential provider returned an invalid cred type'
+      'remote credential provider returned an invalid cred type'
     ): // on Ubuntu
     case error.startsWith(
       'Failed to retrieve list of SSH authentication methods'
     ):
-    case error.startsWith(
-      'Error: too many redirects or authentication replays'
-    ):
+    case error.startsWith('too many redirects or authentication replays'):
       throw new Err.HTTPError401AuthorizationRequired(error);
 
-    case error.startsWith('Error: unexpected HTTP status code: 404'): // 404 on Ubuntu
-    case error.startsWith('Error: request failed with status code: 404'): // 404 on Windows
-    case error.startsWith('Error: ERROR: Repository not found'):
+    case error.startsWith('unexpected HTTP status code: 404'): // 404 on Ubuntu
+    case error.startsWith('request failed with status code: 404'): // 404 on Windows
       throw new Err.HTTPError404NotFound(error);
 
     default:

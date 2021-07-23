@@ -229,4 +229,13 @@ export namespace Err {
       super(`Cannot resolve address: ${mes}`);
     }
   }
+
+  /**
+   * @public
+   */
+  export class InvalidGitRemoteError extends BaseError {
+    constructor(mes: unknown) {
+      super(`Invalid Git remote: ${mes}`);
+    }
+  }
 }
