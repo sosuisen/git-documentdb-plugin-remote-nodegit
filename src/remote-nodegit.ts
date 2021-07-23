@@ -221,7 +221,7 @@ export async function fetch(
 
   const repos = await nodegit.Repository.open(workingDir);
   const callbacks = createCredentialCallback(remoteOptions);
-  const error = await repos
+  const res = await repos
     .fetch('origin', {
       callbacks,
     })
@@ -229,11 +229,15 @@ export async function fetch(
   // It leaks memory if not cleanup
   repos.cleanup();
 
+  let error;
+  if (res !== undefined) {
+    error = res.message;
+  }
   // if (error !== 'undefined') console.warn('connect fetch error: ' + error);
   switch (true) {
     case error === 'undefined':
       break;
-    case error.startsWith('Error: unsupported URL protocol'):
+    case error.startsWith("remote 'origin' does not exist"):
     case error.startsWith('Error: malformed URL'):
       throw new Err.InvalidURLFormatError(error);
 
@@ -243,6 +247,7 @@ export async function fetch(
 
     case error.startsWith('Error: unexpected HTTP status code: 401'): // 401 on Ubuntu
     case error.startsWith('Error: request failed with status code: 401'): // 401 on Windows
+    case error.startsWith('Error: Method connect has thrown an error'):
     case error.startsWith(
       'Error: remote credential provider returned an invalid cred type'
     ): // on Ubuntu
@@ -259,7 +264,6 @@ export async function fetch(
     case error.startsWith('Error: ERROR: Repository not found'):
       throw new Err.HTTPError404NotFound(error);
 
-    case error.startsWith('Error: Method connect has thrown an error'):
     default:
       throw new Err.CannotFetchError(error);
   }

@@ -14,8 +14,8 @@ import expect from 'expect';
 import { Err } from '../src/error';
 import { GitDocumentDB } from 'git-documentdb';
 
-const reposPrefix = 'test_remote_nodegit_check_fetch___';
-const localDir = `./test/database_check_fetch`;
+const reposPrefix = 'test_remote_nodegit_push___';
+const localDir = `./test/database_push`;
 
 let idCounter = 0;
 const serialId = () => {
