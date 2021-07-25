@@ -6,13 +6,14 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
+import nodegit from '@sosuisen/nodegit';
 import path from 'path';
 import fs from 'fs-extra';
-import { destroyDBs, removeRemoteRepositories } from './remote_utils';
-import { checkFetch } from '../src/remote-nodegit';
+import { createClonedDatabases, destroyDBs, removeRemoteRepositories } from './remote_utils';
+import { clone, fetch, getOrCreateGitRemote, push } from '../src/remote-nodegit';
 import expect from 'expect';
 import { Err } from '../src/error';
-import { GitDocumentDB } from 'git-documentdb';
+import { GitDocumentDB, RemoteOptions } from 'git-documentdb';
 
 const reposPrefix = 'test_remote_nodegit_push___';
 const localDir = `./test/database_push`;
@@ -32,7 +33,7 @@ before(() => {
 });
 
 after(() => {
-  fs.removeSync(path.resolve(localDir));
+//  fs.removeSync(path.resolve(localDir));
 });
 
 /**
@@ -52,7 +53,7 @@ const maybe =
     ? describe
     : describe.skip;
 
-maybe('<remote-nodegit>', () => {
+maybe('<remote-nodegit> push', () => {
   const remoteURLBase = process.env.GITDDB_GITHUB_USER_URL?.endsWith('/')
     ? process.env.GITDDB_GITHUB_USER_URL
     : process.env.GITDDB_GITHUB_USER_URL + '/';
@@ -60,11 +61,408 @@ maybe('<remote-nodegit>', () => {
 
   before(async () => {
     // Remove remote
-    await removeRemoteRepositories(reposPrefix);
+    await removeRemoteRepositories(reposPrefix).catch(err => console.log(err));
+  });
+ 
+  it('throws InvalidGitRemoteError', async () => {
+    const dbA: GitDocumentDB = new GitDocumentDB({
+      dbName: serialId(),
+      localDir,
+    });
+    await dbA.open();
+
+    const remoteUrl = 'foo-bar';
+    const repos = await nodegit.Repository.open(dbA.workingDir);
+    // await getOrCreateGitRemote(repos, remoteUrl, 'origin');
+
+    const err = await push(dbA.workingDir, { remoteUrl }, undefined, undefined).catch(err => err);
+
+    expect(err).toBeInstanceOf(Err.InvalidGitRemoteError);
+    expect(err.message).toMatch(/^Invalid Git remote: remote 'origin' does not exist/);
+
+    await destroyDBs([dbA]);
+
+  });
+
+  describe('succeeds', () => {
+     it('when connect to public repository with valid personal access token', async () => {
+      const dbA: GitDocumentDB = new GitDocumentDB({
+        dbName: serialId(),
+        localDir,
+      });
+      const remoteUrl = remoteURLBase + 'test-public.git';
+      fs.ensureDirSync(dbA.workingDir);
+      await clone(dbA.workingDir, { remoteUrl: remoteUrl, connection: { type: 'github', personalAccessToken: token }});
+      await dbA.open();
+      const repos = await nodegit.Repository.open(dbA.workingDir);
+      await getOrCreateGitRemote(repos, remoteUrl, 'origin');
+      
+      const res = await push(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token }}).catch(err => err);
+      expect(res).toBeUndefined();
+  
+      await destroyDBs([dbA]);
+    });
+
+    it('when connect to private repository with valid personal access token', async () => {
+      const dbA: GitDocumentDB = new GitDocumentDB({
+        dbName: serialId(),
+        localDir,
+      });
+
+      const remoteUrl = remoteURLBase + 'test-private.git';
+      fs.ensureDirSync(dbA.workingDir);
+      await clone(dbA.workingDir, { remoteUrl: remoteUrl, connection: { type: 'github', personalAccessToken: token }});
+      await dbA.open();
+      const repos = await nodegit.Repository.open(dbA.workingDir);
+      await getOrCreateGitRemote(repos, remoteUrl, 'origin');
+
+      const res = await push(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token }}).catch(err => err);
+      expect(res).toBeUndefined();
+  
+      await destroyDBs([dbA]);
+    });
+  });
+
+  it('throws InvalidURLFormat by push when http protocol is missing', async () => {
+    const dbA: GitDocumentDB = new GitDocumentDB({
+      dbName: serialId(),
+      localDir,
+    });
+    await dbA.open();
+
+    const remoteUrl = 'foo-bar';
+
+    const repos = await nodegit.Repository.open(dbA.workingDir);
+    await getOrCreateGitRemote(repos, remoteUrl, 'origin');
+
+    const err = await push(dbA.workingDir, { remoteUrl, connection: { type: 'none' } }).catch(err => err);
+
+    expect(err).toBeInstanceOf(Err.InvalidURLFormatError);
+    expect(err.message).toMatch(/^URL format is invalid: unsupported URL protocol/);
+
+    await destroyDBs([dbA]);
+  });
+
+  it('throws InvalidURLFormatError by push when URL is malformed', async () => {
+    const dbA: GitDocumentDB = new GitDocumentDB({
+      dbName: serialId(),
+      localDir,
+    });
+    await dbA.open();
+
+    const remoteUrl = 'https://foo.example.com:xxxx';
+    const repos = await nodegit.Repository.open(dbA.workingDir);
+    await getOrCreateGitRemote(repos, remoteUrl, 'origin');
+
+    const err = await push(dbA.workingDir, { remoteUrl, connection: { type: 'none' } }).catch(err => err);
+
+    expect(err).toBeInstanceOf(Err.InvalidURLFormatError);
+    expect(err.message).toMatch(/^URL format is invalid: malformed URL/);
+
+    await destroyDBs([dbA]);
+  });
+
+  it('throws ResolvingAddressError when HTTP host is invalid', async () => {
+    const dbA: GitDocumentDB = new GitDocumentDB({
+      dbName: serialId(),
+      localDir,
+    });
+    await dbA.open();
+
+    const remoteUrl = 'https://foo.bar.example.com/gitddb-plugin/sync-test-invalid.git';
+
+    const repos = await nodegit.Repository.open(dbA.workingDir);
+    await getOrCreateGitRemote(repos, remoteUrl, 'origin');
+
+    const err = await push(dbA.workingDir, { remoteUrl, connection: { type: 'none' } }).catch(err => err);
+
+    expect(err).toBeInstanceOf(Err.ResolvingAddressError);
+    expect(err.message).toMatch(/^Cannot resolve address: failed to send request/);
+
+    await destroyDBs([dbA]);
+  });
+
+  it('throws ResolvingAddressError when SSH host is invalid', async () => {
+    const dbA: GitDocumentDB = new GitDocumentDB({
+      dbName: serialId(),
+      localDir,
+    });
+    await dbA.open();
+
+    const remoteUrl = 'git@foo.example.com:bar/sync-test.git';
+    const repos = await nodegit.Repository.open(dbA.workingDir);
+    await getOrCreateGitRemote(repos, remoteUrl, 'origin');
+
+    const err = await push(dbA.workingDir, {
+      remoteUrl,
+      connection: {
+        type: 'ssh',
+        publicKeyPath: path.resolve(userHome, '.ssh/invalid-test.pub'),
+        privateKeyPath: path.resolve(userHome, '.ssh/invalid-test'),
+        passPhrase: ''
+      }
+    }).catch(err => err);
+
+    expect(err).toBeInstanceOf(Err.ResolvingAddressError);
+    expect(err.message).toMatch(/^Cannot resolve address: failed to resolve address/);
+
+    await destroyDBs([dbA]);
+  });
+
+  describe('throws HttpError401AuthorizationRequired', () => {
+    it('when personal access token does not exist', async () => {
+      const dbA: GitDocumentDB = new GitDocumentDB({
+        dbName: serialId(),
+        localDir,
+      });
+      await dbA.open();
+  
+      const remoteUrl = remoteURLBase + 'test-public.git';
+      const repos = await nodegit.Repository.open(dbA.workingDir);
+      await getOrCreateGitRemote(repos, remoteUrl, 'origin');
+
+      const err = await push(dbA.workingDir, { remoteUrl, connection: { type: 'github' } }).catch(err => err);
+  
+      expect(err).toBeInstanceOf(Err.HTTPError401AuthorizationRequired);
+      expect(err.message).toMatch(/^HTTP Error: 401 Authorization required: request failed with status code: 401/);
+
+      await destroyDBs([dbA]);
+    });
+
+    it('when connection setting not found', async () => {
+      const dbA: GitDocumentDB = new GitDocumentDB({
+        dbName: serialId(),
+        localDir,
+      });
+      await dbA.open();
+
+      const remoteUrl = remoteURLBase + 'test-public.git';
+      const repos = await nodegit.Repository.open(dbA.workingDir);
+      await getOrCreateGitRemote(repos, remoteUrl, 'origin');
+
+      let err;
+      for (let i = 0; i < 3; i++) {
+        err = await push(dbA.workingDir, { remoteUrl }).catch(err => err);
+        if (!err.message.startsWith('HTTP Error: 401 Authorization required: too many redirects or authentication replays')) {
+          break;
+        }
+      }
+      expect(err).toBeInstanceOf(Err.HTTPError401AuthorizationRequired);
+      if (process.platform === 'win32') {
+        expect(err.message).toMatch(/^HTTP Error: 401 Authorization required: request failed with status code: 401/);
+      }
+      else {
+        expect(err.message).toMatch(/^HTTP Error: 401 Authorization required: unexpected HTTP status code: 401/);
+      }
+
+      await destroyDBs([dbA]);
+    });
+
+
+    it.skip('when XXXX?', async () => {
+      // TODO: This will invoke on ubuntu
+      const dbA: GitDocumentDB = new GitDocumentDB({
+        dbName: serialId(),
+        localDir,
+      });
+      await dbA.open();
+
+      const remoteUrl = remoteURLBase + 'test-private.git';
+      const repos = await nodegit.Repository.open(dbA.workingDir);
+      await getOrCreateGitRemote(repos, remoteUrl, 'origin');
+
+      const err = await push(dbA.workingDir, { remoteUrl }).catch(err => err);
+      expect(err).toBeInstanceOf(Err.HTTPError401AuthorizationRequired);
+      expect(err.message).toMatch(/^HTTP Error: 401 Authorization required: remote credential provider returned an invalid cred type/);
+
+      await destroyDBs([dbA]);
+    });
+
+    it.skip('when invalid SSH key format', async () => {
+      const dbA: GitDocumentDB = new GitDocumentDB({
+        dbName: serialId(),
+        localDir,
+      });
+      await dbA.open();
+
+      // TODO: set SSH url for test
+      const remoteUrl = 'git@github.com:xxxxxxxxxxxxxxxxxx/sync-test.git';
+      const repos = await nodegit.Repository.open(dbA.workingDir);
+      await getOrCreateGitRemote(repos, remoteUrl, 'origin');
+
+      const err = await push(dbA.workingDir, {
+        remoteUrl,
+        connection: {
+          type: 'ssh',
+          publicKeyPath: path.resolve(userHome, '.ssh/invalid-test.pub'),
+          privateKeyPath: path.resolve(userHome, '.ssh/invalid-test'),
+          passPhrase: ''
+        }
+      }).catch(err => err);
+
+      expect(err).toBeInstanceOf(Err.HTTPError401AuthorizationRequired);
+      // TODO: How to invoke this error      
+      expect(err.message).toMatch(/^HTTP Error: 401 Authorization required: Failed to retrieve list of SSH authentication methods/);
+
+      await destroyDBs([dbA]);
+    });
+
+    it('when invalid personal access token', async () => {
+      const dbA: GitDocumentDB = new GitDocumentDB({
+        dbName: serialId(),
+        localDir,
+      });
+      await dbA.open();
+  
+      const remoteUrl = remoteURLBase + 'test-private.git';
+      const repos = await nodegit.Repository.open(dbA.workingDir);
+      await getOrCreateGitRemote(repos, remoteUrl, 'origin');
+
+      const err = await push(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: 'foo-bar' } }).catch(err => err);
+
+      expect(err).toBeInstanceOf(Err.HTTPError401AuthorizationRequired);
+      expect(err.message).toMatch(/^HTTP Error: 401 Authorization required: too many redirects or authentication replays/);
+
+      await destroyDBs([dbA]);
+    });
+  
+  
+
+    it('when invalid pair of url and SSH auth', async () => {
+      const dbA: GitDocumentDB = new GitDocumentDB({
+        dbName: serialId(),
+        localDir,
+      });
+      await dbA.open();
+
+      const remoteUrl = remoteURLBase + 'test-private.git';
+      const repos = await nodegit.Repository.open(dbA.workingDir);
+      await getOrCreateGitRemote(repos, remoteUrl, 'origin');
+
+      const err = await push(dbA.workingDir, {
+        remoteUrl,
+        connection: {
+          type: 'ssh',
+          publicKeyPath: path.resolve(userHome, '.ssh/invalid-test.pub'),
+          privateKeyPath: path.resolve(userHome, '.ssh/invalid-test'),
+          passPhrase: ''
+        }
+      }).catch(err => err);
+
+      expect(err).toBeInstanceOf(Err.HTTPError401AuthorizationRequired);
+      expect(err.message).toMatch(/^HTTP Error: 401 Authorization required: too many redirects or authentication replays/);
+
+      await destroyDBs([dbA]);
+    });
+  });
+
+  describe('throws HttpError404NotFound', () => {
+    it('when valid auth and repository does not exist', async () => {
+      const dbA: GitDocumentDB = new GitDocumentDB({
+        dbName: serialId(),
+        localDir,
+      });
+      await dbA.open();
+
+      const remoteUrl = remoteURLBase + 'sync-test-invalid.git';
+      const repos = await nodegit.Repository.open(dbA.workingDir);
+      await getOrCreateGitRemote(repos, remoteUrl, 'origin');
+
+      const err = await push(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token } }).catch(err => err);
+      expect(err).toBeInstanceOf(Err.HTTPError404NotFound);
+      if (process.platform === 'win32') {
+        expect(err.message).toMatch(/^HTTP Error: 404 Not Found: request failed with status code: 404/);
+      }
+      else {
+        expect(err.message).toMatch(/^HTTP Error: 404 Not Found: unexpected HTTP status code: 404/);
+      }
+  
+      await destroyDBs([dbA]);
+
+    });
+  });
+
+  describe.skip('throws CannotPushError', () => {
+    // Other cases
+  });
+
+  it('throws InvalidURLFormatError by createCredentialForGitHub', async () => {
+    const dbA: GitDocumentDB = new GitDocumentDB({
+      dbName: serialId(),
+      localDir,
+    });
+    await dbA.open();
+
+    const remoteUrl = 'foo-bar';
+    const repos = await nodegit.Repository.open(dbA.workingDir);
+    await getOrCreateGitRemote(repos, remoteUrl, 'origin');
+
+    const err = await push(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token } }).catch(err => err);
+    expect(err).toBeInstanceOf(Err.InvalidURLFormatError);
+    expect(err.message).toMatch(/^URL format is invalid: http protocol required in createCredentialForGitHub/);
+
+    await destroyDBs([dbA]);
+  });
+
+  it('throws InvalidRepositoryURLError', async () => {
+    const dbA: GitDocumentDB = new GitDocumentDB({
+      dbName: serialId(),
+      localDir,
+    });
+    await dbA.open();
+
+    const remoteUrl = remoteURLBase + 'foo/bar/test.git';
+    const repos = await nodegit.Repository.open(dbA.workingDir);
+    await getOrCreateGitRemote(repos, remoteUrl, 'origin');
+
+    await expect(push(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token } })).rejects.toThrowError(Err.InvalidRepositoryURLError);
+
+    await destroyDBs([dbA]);
+  });
+
+  it('throws InvalidSSHKeyPathError', async () => {
+    const dbA: GitDocumentDB = new GitDocumentDB({
+      dbName: serialId(),
+      localDir,
+    });
+    await dbA.open();
+
+    const remoteUrl = 'git@github.com:xxxxxxxxxxxxxxxxxx/sync-test.git';
+    const repos = await nodegit.Repository.open(dbA.workingDir);
+    await getOrCreateGitRemote(repos, remoteUrl, 'origin');
+
+    await expect(push(dbA.workingDir, {
+      remoteUrl,
+      connection: {
+        type: 'ssh',
+        publicKeyPath: path.resolve(userHome, 'foo'),
+        privateKeyPath: path.resolve(userHome, 'bar'),
+        passPhrase: ''
+      }
+    })).rejects.toThrowError(Err.InvalidSSHKeyPathError);
+
+    await destroyDBs([dbA]);
+  });
+
+  it('throws InvalidAuthenticationTypeError', async () => {
+    const dbA: GitDocumentDB = new GitDocumentDB({
+      dbName: serialId(),
+      localDir,
+    });
+    await dbA.open();
+
+    const remoteUrl = remoteURLBase + 'test-private.git';
+    const repos = await nodegit.Repository.open(dbA.workingDir);
+    await getOrCreateGitRemote(repos, remoteUrl, 'origin');
+
+    // @ts-ignore
+    await expect(push(dbA.workingDir, { remoteUrl, connection: { type: 'foo' } })).rejects.toThrowError(Err.InvalidAuthenticationTypeError);
+
+    await destroyDBs([dbA]);
   });
 
   describe('throws HttpError403Forbidden', () => {
-    it.only('when access repository of another account with your account', async () => {
+    it('when access repository of another account with your account', async () => {
       const dbA: GitDocumentDB = new GitDocumentDB({
         dbName: serialId(),
         localDir,
@@ -73,151 +471,77 @@ maybe('<remote-nodegit>', () => {
 
       //const remoteUrl = privateRepositoryOfAnotherUser;
       const remoteUrl = 'https://github.com/sosuisen/git-documentdb.git';
-      console.log(remoteUrl);
-      const err = await checkFetch(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token } }, dbA.logger).catch(err => err);
-      console.log(err);
-      //        expect(err).toBeInstanceOf(Err.HTTPError403Forbidden);
-      expect(err.message).toMatch(/^HTTP Error: 401 Authorization required: Error: request failed with status code: 401/);
+      const repos = await nodegit.Repository.open(dbA.workingDir);
+      await getOrCreateGitRemote(repos, remoteUrl, 'origin');
+  
+      const err = await push(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token } }).catch(err => err);
+      expect(err).toBeInstanceOf(Err.HTTPError403Forbidden);
+      
+      if (process.platform === 'win32') {
+        expect(err.message).toMatch(/^HTTP Error: 403 Forbidden: request failed with status code: 403/);
+      }
+      else {
+        expect(err.message).toMatch(/^HTTP Error: 403 Forbidden: unexpected HTTP status code: 403/);
+      }
 
       await destroyDBs([dbA]);
     });
   });
-});
 
-/*
-describe(': _checkPush()', () => {
-  it('returns ok', async () => {
-    const remoteURL = remoteURLBase + serialId();
-    const dbName = monoId();
-    const gitDDB = new GitDocumentDB({
-      dbName,
-      localDir,
-    });
-    await gitDDB.open();
-    const remoteRepos = new RemoteRepository({
-      remoteUrl: remoteURL,
-    });
-    // You can test private members by array access.
-    // eslint-disable-next-line dot-notation
-    const [result, remote] = await remoteRepos['_getOrCreateGitRemote'](
-      gitDDB.repository()!,
-      remoteURL
-    );
-    await createRemoteRepository(remoteURL);
-    const cred = createCredential({
-      remoteUrl: remoteURL,
-      connection: {
-        type: 'github',
-        personalAccessToken: token,
-      },
-    });
-    // eslint-disable-next-line dot-notation
-    await expect(remoteRepos['_checkPush'](remote, cred)).resolves.toBe('ok');
+  describe('throws UnfetchedCommitExistsError', () => {
+    it('when unfetched commit exists', async () => {
+      const [dbA, dbB, syncA, syncB] = await createClonedDatabases(remoteURLBase, localDir, serialId);
 
-    destroyDBs([gitDDB]);
-  });
+      await dbB.put({ name: 'foo' });
+      await syncB.tryPush();
 
-  it('throws PushPermissionDeniedError when personalAccessToken is invalid', async () => {
-    const remoteURL = remoteURLBase + serialId();
-    const dbName = monoId();
-    const gitDDB = new GitDocumentDB({
-      dbName,
-      localDir,
+      const err = await push(dbA.workingDir, { remoteUrl: syncA.remoteURL, connection: { type: 'github', personalAccessToken: token }}).catch(err => err);
+      expect(err).toBeInstanceOf(Err.UnfetchedCommitExistsError);
+  
+      await destroyDBs([dbA, dbB]);
     });
-    await gitDDB.open();
-    const remoteRepos = new RemoteRepository({
-      remoteUrl: remoteURL,
-    });
-    // You can test private members by array access.
-    // eslint-disable-next-line dot-notation
-    const [result, remote] = await remoteRepos['_getOrCreateGitRemote'](
-      gitDDB.repository()!,
-      remoteURL
-    );
-    await new RemoteRepository({
-      remoteUrl: remoteURL,
-      connection: {
-        type: 'github',
-        personalAccessToken: token,
-      },
-    }).create();
 
-    const cred = createCredential({
-      remoteUrl: remoteURL,
-      connection: {
-        type: 'github',
-        personalAccessToken: token + '_invalid',
-      },
-    });
-    // eslint-disable-next-line dot-notation
-    const error = await remoteRepos['_checkPush'](remote, cred).catch(err => err);
-    if (error instanceof Err.PushPermissionDeniedError) {
-      // Notice that it sometimes throw Err.RemoteRepositoryNotFoundError
-    }
-    else {
-      expect(error).toBeInstanceOf(Err.RemoteRepositoryNotFoundError);
-    }
+    it('Race condition of two push() calls throws UnfetchedCommitExistsError in validatePushResult', async () => {
+      const remoteURL = remoteURLBase + serialId();
 
-    destroyDBs([gitDDB]);
-  });
+      const dbNameA = serialId();
 
-  it("throws RemoteRepositoryNotFoundError when try to push to others' repository", async () => {
-    const remoteURL = 'https://github.com/sosuisen/git-documentdb';
-    const dbName = monoId();
-    const gitDDB = new GitDocumentDB({
-      dbName,
-      localDir,
-    });
-    await gitDDB.open();
-    const remoteRepos = new RemoteRepository({
-      remoteUrl: remoteURL,
-    });
-    // You can test private members by array access.
-    // eslint-disable-next-line dot-notation
-    const [result, remote] = await remoteRepos['_getOrCreateGitRemote'](
-      gitDDB.repository()!,
-      remoteURL
-    );
-    const cred = createCredential({
-      remoteUrl: remoteURL,
-      connection: {
-        type: 'github',
-        personalAccessToken: token,
-      },
-    });
-    // eslint-disable-next-line dot-notation
-    await expect(remoteRepos['_checkPush'](remote, cred)).rejects.toThrowError(
-      Err.RemoteRepositoryNotFoundError
-    );
-
-    destroyDBs([gitDDB]);
-  });
-
-      it(`to a read only repository throws PushConnectionFailedError when onlyFetch is false`, async () => {
-      const readonlyURL = 'https://github.com/sosuisen/git-documentdb';
-      const dbName = monoId();
-      const gitDDB = new GitDocumentDB({
-        dbName,
-        localDir,
+      const dbA: GitDocumentDB = new GitDocumentDB({
+        dbName: dbNameA,
+        localDir: localDir,
       });
-      await gitDDB.open();
-
-      const remoteOptions: RemoteOptions = {
-        remoteUrl: readonlyURL,
-        connection: {
-          type: 'github',
-          personalAccessToken: token,
-        },
+      const options: RemoteOptions = {
+        remoteUrl: remoteURL,
+        connection: { type: 'github', personalAccessToken: token },
       };
-      // @ts-ignore
-      const remoteRepos = new RemoteRepository(remoteOptions);
-      const cred = createCredential(remoteOptions);
-      const onlyFetch = false;
-      await expect(
-        remoteRepos.connect(gitDDB.repository()!, cred, onlyFetch)
-      ).rejects.toThrowError(Err.PushConnectionFailedError);
+      await dbA.open();
+      const syncA = await dbA.sync(options);
+      const jsonA1 = { _id: '1', name: 'fromA' };
+      await dbA.put(jsonA1);
 
-      destroyDBs([gitDDB]);
+      const dbNameB = serialId();
+      const dbB: GitDocumentDB = new GitDocumentDB({
+        dbName: dbNameB,
+        localDir: localDir,
+      });
+      await dbB.open();
+      const syncB = await dbB.sync(options);
+      const jsonB1 = { _id: '1', name: 'fromB' };
+      await dbB.put(jsonB1);
+
+      await expect(Promise.all([
+        push(dbA.workingDir, { remoteUrl: syncA.remoteURL, connection: { type: 'github', personalAccessToken: token }}),
+        push(dbB.workingDir, { remoteUrl: syncB.remoteURL, connection: { type: 'github', personalAccessToken: token }}),
+      ])).rejects.toThrowError(
+        Err.UnfetchedCommitExistsError
+      );
+
+      await destroyDBs([dbA, dbB]);
     });
+  });
+
+  describe('throws CannotConnectError', () => {
+    // ResolvingAddressError is thrown when network is not connected.
+    // CannotConnectError will be thrown when other unexpected cases.
+  });
 });
-*/

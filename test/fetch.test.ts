@@ -76,9 +76,9 @@ maybe('<remote-nodegit> fetch', () => {
     const repos = await nodegit.Repository.open(dbA.workingDir);
     // await getOrCreateGitRemote(repos, remoteUrl, 'origin');
 
-    const err = await fetch(dbA.workingDir, { remoteUrl }, undefined, dbA.logger).catch(err => err);
+    const err = await fetch(dbA.workingDir, { remoteUrl }).catch(err => err);
 
-//    expect(err).toBeInstanceOf(Err.InvalidGitRemoteError);
+    expect(err).toBeInstanceOf(Err.InvalidGitRemoteError);
     expect(err.message).toMatch(/^Invalid Git remote: remote 'origin' does not exist/);
 
     await destroyDBs([dbA]);
@@ -96,7 +96,7 @@ maybe('<remote-nodegit> fetch', () => {
       const repos = await nodegit.Repository.open(dbA.workingDir);
       await getOrCreateGitRemote(repos, remoteUrl, 'origin');
       
-      const res = await fetch(dbA.workingDir, { remoteUrl, connection: { type: 'github' } }, undefined, dbA.logger).catch(err => err);
+      const res = await fetch(dbA.workingDir, { remoteUrl, connection: { type: 'github' } }).catch(err => err);
       expect(res).toBeUndefined();
   
       await destroyDBs([dbA]);
@@ -113,7 +113,7 @@ maybe('<remote-nodegit> fetch', () => {
       const repos = await nodegit.Repository.open(dbA.workingDir);
       await getOrCreateGitRemote(repos, remoteUrl, 'origin');
 
-      const res = await fetch(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token } }, undefined, dbA.logger).catch(err => err);
+      const res = await fetch(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token } }).catch(err => err);
       expect(res).toBeUndefined();
   
       await destroyDBs([dbA]);
@@ -130,7 +130,7 @@ maybe('<remote-nodegit> fetch', () => {
       const repos = await nodegit.Repository.open(dbA.workingDir);
       await getOrCreateGitRemote(repos, remoteUrl, 'origin');
 
-      const res = await fetch(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token } }, undefined, dbA.logger).catch(err => err);
+      const res = await fetch(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token } }).catch(err => err);
       expect(res).toBeUndefined();
   
       await destroyDBs([dbA]);
@@ -148,7 +148,7 @@ maybe('<remote-nodegit> fetch', () => {
     const repos = await nodegit.Repository.open(dbA.workingDir);
     await getOrCreateGitRemote(repos, remoteUrl, 'origin');
 
-    const err = await fetch(dbA.workingDir, { remoteUrl }, undefined, dbA.logger).catch(err => err);
+    const err = await fetch(dbA.workingDir, { remoteUrl }).catch(err => err);
 
     expect(err).toBeInstanceOf(Err.InvalidURLFormatError);
     expect(err.message).toMatch(/^URL format is invalid: unsupported URL protocol/);
@@ -167,7 +167,7 @@ maybe('<remote-nodegit> fetch', () => {
     const repos = await nodegit.Repository.open(dbA.workingDir);
     await getOrCreateGitRemote(repos, remoteUrl, 'origin');
 
-    const err = await fetch(dbA.workingDir, { remoteUrl }, undefined, dbA.logger).catch(err => err);
+    const err = await fetch(dbA.workingDir, { remoteUrl }).catch(err => err);
     expect(err).toBeInstanceOf(Err.InvalidURLFormatError);
     expect(err.message).toMatch(/^URL format is invalid: malformed URL/);
 
@@ -186,7 +186,7 @@ maybe('<remote-nodegit> fetch', () => {
     const repos = await nodegit.Repository.open(dbA.workingDir);
     await getOrCreateGitRemote(repos, remoteUrl, 'origin');
 
-    const err = await fetch(dbA.workingDir, { remoteUrl }, undefined, dbA.logger).catch(err => err);
+    const err = await fetch(dbA.workingDir, { remoteUrl }).catch(err => err);
     expect(err).toBeInstanceOf(Err.ResolvingAddressError);
     expect(err.message).toMatch(/^Cannot resolve address: failed to send request/);
 
@@ -212,7 +212,7 @@ maybe('<remote-nodegit> fetch', () => {
         privateKeyPath: path.resolve(userHome, '.ssh/invalid-test'),
         passPhrase: ''
       }
-    }, undefined, dbA.logger).catch(err => err);
+    }).catch(err => err);
 
     expect(err).toBeInstanceOf(Err.ResolvingAddressError);
     expect(err.message).toMatch(/^Cannot resolve address: failed to resolve address/);
@@ -233,7 +233,7 @@ maybe('<remote-nodegit> fetch', () => {
       const repos = await nodegit.Repository.open(dbA.workingDir);
       await getOrCreateGitRemote(repos, remoteUrl, 'origin');
 
-      const err = await fetch(dbA.workingDir, { remoteUrl, connection: { type: 'github' } }, undefined, dbA.logger).catch(err => err);
+      const err = await fetch(dbA.workingDir, { remoteUrl, connection: { type: 'github' } }).catch(err => err);
   
       expect(err).toBeInstanceOf(Err.HTTPError401AuthorizationRequired);
       expect(err.message).toMatch(/^HTTP Error: 401 Authorization required: request failed with status code: 401/);
@@ -254,7 +254,7 @@ maybe('<remote-nodegit> fetch', () => {
 
       let err;
       for (let i = 0; i < 3; i++) {
-        err = await fetch(dbA.workingDir, { remoteUrl }, undefined, dbA.logger).catch(err => err);
+        err = await fetch(dbA.workingDir, { remoteUrl }).catch(err => err);
         if (!err.message.startsWith('HTTP Error: 401 Authorization required: too many redirects or authentication replays')) {
           break;
         }
@@ -283,7 +283,7 @@ maybe('<remote-nodegit> fetch', () => {
       const repos = await nodegit.Repository.open(dbA.workingDir);
       await getOrCreateGitRemote(repos, remoteUrl, 'origin');
 
-      const err = await fetch(dbA.workingDir, { remoteUrl }, undefined, dbA.logger).catch(err => err);
+      const err = await fetch(dbA.workingDir, { remoteUrl }).catch(err => err);
       expect(err).toBeInstanceOf(Err.HTTPError401AuthorizationRequired);
       expect(err.message).toMatch(/^HTTP Error: 401 Authorization required: remote credential provider returned an invalid cred type/);
 
@@ -310,7 +310,7 @@ maybe('<remote-nodegit> fetch', () => {
           privateKeyPath: path.resolve(userHome, '.ssh/invalid-test'),
           passPhrase: ''
         }
-      }, undefined, dbA.logger).catch(err => err);
+      }).catch(err => err);
 
       expect(err).toBeInstanceOf(Err.HTTPError401AuthorizationRequired);
       // TODO: How to invoke this error      
@@ -330,7 +330,7 @@ maybe('<remote-nodegit> fetch', () => {
       const repos = await nodegit.Repository.open(dbA.workingDir);
       await getOrCreateGitRemote(repos, remoteUrl, 'origin');
 
-      const err = await fetch(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: 'foo-bar' } }, undefined, dbA.logger).catch(err => err);
+      const err = await fetch(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: 'foo-bar' } }).catch(err => err);
 
       expect(err).toBeInstanceOf(Err.HTTPError401AuthorizationRequired);
       expect(err.message).toMatch(/^HTTP Error: 401 Authorization required: too many redirects or authentication replays/);
@@ -359,7 +359,7 @@ maybe('<remote-nodegit> fetch', () => {
           privateKeyPath: path.resolve(userHome, '.ssh/invalid-test'),
           passPhrase: ''
         }
-      }, undefined, dbA.logger).catch(err => err);
+      }).catch(err => err);
 
       expect(err).toBeInstanceOf(Err.HTTPError401AuthorizationRequired);
       expect(err.message).toMatch(/^HTTP Error: 401 Authorization required: too many redirects or authentication replays/);
@@ -380,7 +380,7 @@ maybe('<remote-nodegit> fetch', () => {
       const repos = await nodegit.Repository.open(dbA.workingDir);
       await getOrCreateGitRemote(repos, remoteUrl, 'origin');
 
-      const err = await fetch(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token } }, undefined, dbA.logger).catch(err => err);
+      const err = await fetch(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token } }).catch(err => err);
       expect(err).toBeInstanceOf(Err.HTTPError404NotFound);
       if (process.platform === 'win32') {
         expect(err.message).toMatch(/^HTTP Error: 404 Not Found: request failed with status code: 404/);
@@ -409,7 +409,7 @@ maybe('<remote-nodegit> fetch', () => {
     const repos = await nodegit.Repository.open(dbA.workingDir);
     await getOrCreateGitRemote(repos, remoteUrl, 'origin');
 
-    const err = await fetch(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token } }, undefined, dbA.logger).catch(err => err);
+    const err = await fetch(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token } }).catch(err => err);
     expect(err).toBeInstanceOf(Err.InvalidURLFormatError);
     expect(err.message).toMatch(/^URL format is invalid: http protocol required in createCredentialForGitHub/);
 
@@ -427,7 +427,7 @@ maybe('<remote-nodegit> fetch', () => {
     const repos = await nodegit.Repository.open(dbA.workingDir);
     await getOrCreateGitRemote(repos, remoteUrl, 'origin');
 
-    await expect(fetch(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token } }, undefined, dbA.logger)).rejects.toThrowError(Err.InvalidRepositoryURLError);
+    await expect(fetch(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token } })).rejects.toThrowError(Err.InvalidRepositoryURLError);
 
     await destroyDBs([dbA]);
   });
@@ -451,7 +451,7 @@ maybe('<remote-nodegit> fetch', () => {
         privateKeyPath: path.resolve(userHome, 'bar'),
         passPhrase: ''
       }
-    }, undefined, dbA.logger)).rejects.toThrowError(Err.InvalidSSHKeyPathError);
+    })).rejects.toThrowError(Err.InvalidSSHKeyPathError);
 
     await destroyDBs([dbA]);
   });
@@ -468,8 +468,13 @@ maybe('<remote-nodegit> fetch', () => {
     await getOrCreateGitRemote(repos, remoteUrl, 'origin');
 
     // @ts-ignore
-    await expect(fetch(dbA.workingDir, { remoteUrl, connection: { type: 'foo' } }, undefined, dbA.logger)).rejects.toThrowError(Err.InvalidAuthenticationTypeError);
+    await expect(fetch(dbA.workingDir, { remoteUrl, connection: { type: 'foo' } })).rejects.toThrowError(Err.InvalidAuthenticationTypeError);
 
     await destroyDBs([dbA]);
   });
+
+  describe('throws CannotConnectError', () => {
+    // ResolvingAddressError is thrown when network is not connected.
+    // CannotConnectError will be thrown when other unexpected cases.
+  });  
 });

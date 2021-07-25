@@ -50,6 +50,8 @@ export async function clone(
     displayFunctionName: false,
     displayFilePath: 'hidden',
   });
+  logger.debug(`remote-nodegit: clone: ${remoteOptions.remoteUrl}`);
+
   if (
     remoteOptions !== undefined &&
     remoteOptions.remoteUrl !== undefined &&
@@ -108,7 +110,7 @@ export async function getOrCreateGitRemote(
  * @throws {@link Err.ResolvingAddressError}
  * @throws {@link Err.HTTPError401AuthorizationRequired}
  * @throws {@link Err.HTTPError404NotFound}
- * @throws {@link Err.CannotFetchError}
+ * @throws {@link Err.CannotConnectError}
  *
  * @throws {@link Err.HttpProtocolRequiredError} (from createCredentialForGitHub)
  * @throws {@link Err.InvalidRepositoryURLError} (from createCredentialForGitHub)
@@ -157,6 +159,7 @@ export async function checkFetch(
     case error.startsWith('Error: malformed URL'):
       throw new Err.InvalidURLFormatError(error);
 
+    // NodeGit throws them when network is limited.
     case error.startsWith('Error: failed to send request'):
     case error.startsWith('Error: failed to resolve address'):
       throw new Err.ResolvingAddressError(error);
@@ -180,7 +183,7 @@ export async function checkFetch(
       throw new Err.HTTPError404NotFound(error);
 
     default:
-      throw new Err.CannotFetchError(error);
+      throw new Err.CannotConnectError(error);
   }
 
   return true;
@@ -189,12 +192,12 @@ export async function checkFetch(
 /**
  * git fetch
  *
- *
+ * @throws {@link Err.InvalidGitRemoteError}
  * @throws {@link Err.InvalidURLFormatError}
  * @throws {@link Err.ResolvingAddressError}
  * @throws {@link Err.HTTPError401AuthorizationRequired}
  * @throws {@link Err.HTTPError404NotFound}
- * @throws {@link Err.CannotFetchError}
+ * @throws {@link Err.CannotConnectError}
  *
  * @throws {@link Err.HttpProtocolRequiredError} (from createCredentialForGitHub)
  * @throws {@link Err.InvalidRepositoryURLError} (from createCredentialForGitHub)
@@ -219,7 +222,7 @@ export async function fetch(
     displayFilePath: 'hidden',
   });
 
-  // logger.debug(`sync_worker: fetch: ${remoteOptions.remoteUrl}`);
+  logger.debug(`remote-nodegit: fetch: ${remoteOptions.remoteUrl}`);
 
   const repos = await nodegit.Repository.open(workingDir);
   const callbacks = createCredentialCallback(remoteOptions);
@@ -242,10 +245,12 @@ export async function fetch(
       break;
     case /^remote '.+?' does not exist/.test(error):
       throw new Err.InvalidGitRemoteError(error);
+
     case error.startsWith('unsupported URL protocol'):
     case error.startsWith('malformed URL'):
       throw new Err.InvalidURLFormatError(error);
 
+    // NodeGit throws them when network is limited.
     case error.startsWith('failed to send request'):
     case error.startsWith('failed to resolve address'):
       throw new Err.ResolvingAddressError(error);
@@ -267,7 +272,7 @@ export async function fetch(
       throw new Err.HTTPError404NotFound(error);
 
     default:
-      throw new Err.CannotFetchError(error);
+      throw new Err.CannotConnectError(error);
   }
 }
 
@@ -296,8 +301,23 @@ function calcDistance(
 /**
  * git push
  *
- * @throws {@link Err.UnfetchedCommitExistsError} (from this and validatePushResult())
- * @throws {@link Err.GitFetchError} (from validatePushResult())
+ * @throws {@link Err.InvalidGitRemoteError}
+ * @throws {@link Err.UnfetchedCommitExistsError}
+ * @throws {@link Err.InvalidURLFormatError}
+ * @throws {@link Err.ResolvingAddressError}
+ * @throws {@link Err.HTTPError401AuthorizationRequired}
+ * @throws {@link Err.HTTPError404NotFound}
+ * @throws {@link Err.HTTPError403Forbidden}
+ * @throws {@link Err.CannotConnectError}
+ *
+ * @throws {@link Err.UnfetchedCommitExistsError} (from validatePushResult())
+ * @throws {@link Err.CannotConnectError} (from validatePushResult())
+ *
+ * @throws {@link Err.HttpProtocolRequiredError} (from createCredentialForGitHub)
+ * @throws {@link Err.InvalidRepositoryURLError} (from createCredentialForGitHub)
+ * @throws {@link Err.InvalidSSHKeyPathError} (from createCredentialForSSH)
+ *
+ * @throws {@link Err.InvalidAuthenticationTypeError} (from createCredential)
  *
  * @public
  */
@@ -318,8 +338,17 @@ export async function push(
     displayFilePath: 'hidden',
   });
 
+  logger.debug(`remote-nodegit: push: ${remoteOptions.remoteUrl}`);
+
   const repos = await nodegit.Repository.open(workingDir);
-  const remote: nodegit.Remote = await repos.getRemote(remoteName);
+  const remote: nodegit.Remote = await repos
+    .getRemote(remoteName)
+    .catch((err) => {
+      if (/^remote '.+?' does not exist/.test(err.message)) {
+        throw new Err.InvalidGitRemoteError(err.message);
+      }
+      throw err;
+    });
   const callbacks = createCredentialCallback(remoteOptions);
 
   const res = await remote
@@ -342,45 +371,59 @@ export async function push(
     });
 
   let error = '';
-  if (typeof res !== 'number') {
+  if (typeof res !== 'number' && typeof res !== 'undefined') {
     error = res.message;
   }
 
-  console.warn('connect push error: ' + error);
+  // console.warn('connect push error: ' + error);
   switch (true) {
-    case typeof res === 'number':
+    case typeof res === 'number' || typeof res === 'undefined':
       break;
+
     case error.startsWith('unsupported URL protocol'):
-    case error.startsWith('failed to resolve address'):
-    case error.startsWith('failed to send request'):
+    case error.startsWith('malformed URL'):
       throw new Err.InvalidURLFormatError(error);
-    case error.startsWith('unexpected HTTP status code: 4'): // 401, 404 on Ubuntu
-    case error.startsWith('request failed with status code: 4'): // 401, 404 on Windows
-    case error.startsWith('Method connect has thrown an error'): {
-      // Remote repository does not exist, or you do not have permission to the private repository
-      throw new Err.HTTPError404NotFound(error);
-    }
-    // Invalid personal access token
-    // Personal access token is read only
+
+    // NodeGit throws them when network is limited.
+    case error.startsWith('failed to send request'):
+    case error.startsWith('failed to resolve address'):
+      throw new Err.ResolvingAddressError(error);
+
+    case error.startsWith('unexpected HTTP status code: 401'): // 401 on Ubuntu
+    case error.startsWith('request failed with status code: 401'): // 401 on Windows
+    case error.startsWith('Method connect has thrown an error'):
     case error.startsWith(
       'remote credential provider returned an invalid cred type'
     ): // on Ubuntu
+    case error.startsWith(
+      'Failed to retrieve list of SSH authentication methods'
+    ):
     case error.startsWith('too many redirects or authentication replays'):
+      throw new Err.HTTPError401AuthorizationRequired(error);
+
+    case error.startsWith('unexpected HTTP status code: 404'): // 404 on Ubuntu
+    case error.startsWith('request failed with status code: 404'): // 404 on Windows
+      throw new Err.HTTPError404NotFound(error);
+
+    case error.startsWith('unexpected HTTP status code: 403'): // 403 on Ubuntu
+    case error.startsWith('request failed with status code: 403'): // 403 on Windows
     case error.startsWith('Error: ERROR: Permission to'): {
-      throw new Err.PushPermissionDeniedError(error);
+      throw new Err.HTTPError403Forbidden(error);
     }
+
     default:
-      throw new Error(error);
+      throw new Err.CannotConnectError(error);
   }
 
   await validatePushResult(repos, workingDir, callbacks);
 }
 
 /**
- * NodeGit.Remote.push does not return valid error in race condition,
- * so check is needed.
+ * NodeGit.Remote.push does not throw following error in race condition:
+ * 'cannot push because a reference that you are trying to update on the remote contains commits that are not present locally'
+ * So check remote changes again.
  *
- * @throws {@link Err.GitFetchError}
+ * @throws {@link Err.CannotConnectError}
  * @throws {@link Err.UnfetchedCommitExistsError}
  */
 async function validatePushResult(
@@ -393,7 +436,12 @@ async function validatePushResult(
       callbacks,
     })
     .catch((err) => {
-      throw new Err.GitFetchError(err.message);
+      // push() already check errors except network errors.
+      // So throw only network errors here.
+      throw new Err.CannotConnectError(err.message);
+    })
+    .finally(() => {
+      repos.cleanup();
     });
 
   // Use isomorphic-git to avoid memory leak
@@ -420,11 +468,7 @@ async function validatePushResult(
     remoteCommitOid
   );
 
-  if (distance.behind === undefined) {
-    // This will not be occurred.
-    throw new Err.NoMergeBaseFoundError();
-  }
-  else if (distance.behind > 0) {
+  if (distance.behind && distance.behind > 0) {
     throw new Err.UnfetchedCommitExistsError();
   }
 }

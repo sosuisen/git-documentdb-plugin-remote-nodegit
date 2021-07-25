@@ -41,7 +41,7 @@ export async function createDatabase (
 
   return [dbA, remoteA];
 }
-/*
+
 export async function createClonedDatabases (
   remoteURLBase: string,
   localDir: string,
@@ -80,12 +80,12 @@ export async function createClonedDatabases (
   await dbB.open();
   await dbB.sync(options);
 
-  const remoteA = dbA.getSync(remoteURL);
-  const remoteB = dbB.getSync(remoteURL);
+  const syncA = dbA.getSync(remoteURL);
+  const syncB = dbB.getSync(remoteURL);
 
-  return [dbA, dbB, remoteA, remoteB];
+  return [dbA, dbB, syncA, syncB];
 }
-*/
+
 export const createRemoteRepository = async (remoteURL: string) => {
   await new RemoteRepository({
     remoteUrl: remoteURL,

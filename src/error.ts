@@ -32,17 +32,8 @@ export namespace Err {
    * @public
    */
   export class CannotConnectError extends BaseError {
-    constructor(public retry: number, url: string, mes: string) {
-      super(`Cannot connect to ${url}: ${mes}`);
-    }
-  }
-
-  /**
-   * @public
-   */
-  export class CannotFetchError extends BaseError {
     constructor(mes: unknown) {
-      super(`Cannot fetch: ${mes}`);
+      super(`Cannot connect: ${mes}`);
     }
   }
 
@@ -191,33 +182,6 @@ export namespace Err {
       super(
         'Cannot push because a reference that you are trying to update on the remote contains commits that are not present locally.'
       );
-    }
-  }
-
-  /**
-   * @public
-   */
-  export class GitPushError extends BaseError {
-    constructor(mes: unknown) {
-      super(`Push error in Git : ${mes}`);
-    }
-  }
-
-  /**
-   * @public
-   */
-  export class GitFetchError extends BaseError {
-    constructor(mes: unknown) {
-      super(`Fetch error in sync worker: ${mes}`);
-    }
-  }
-
-  /**
-   * @public
-   */
-  export class NoMergeBaseFoundError extends BaseError {
-    constructor() {
-      super(`No merge base found`);
     }
   }
 
