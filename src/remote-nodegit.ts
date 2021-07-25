@@ -37,7 +37,14 @@ export const name = 'nodegit';
  * Clone
  *
  * @throws {@link Err.CannotCloneRepositoryError}
+ *
+ * @throws {@link Err.HttpProtocolRequiredError} (from createCredentialForGitHub)
+ * @throws {@link Err.InvalidRepositoryURLError} (from createCredentialForGitHub)
+ * @throws {@link Err.InvalidSSHKeyPathError} (from createCredentialForSSH)
+ *
+ * @throws {@link Err.InvalidAuthenticationTypeError} (from createCredential)
  */
+// eslint-disable-next-line complexity
 export async function clone(
   workingDir: string,
   remoteOptions: RemoteOptions,
@@ -52,20 +59,49 @@ export async function clone(
   });
   logger.debug(`remote-nodegit: clone: ${remoteOptions.remoteUrl}`);
 
-  if (
-    remoteOptions !== undefined &&
-    remoteOptions.remoteUrl !== undefined &&
-    remoteOptions.remoteUrl !== ''
-  ) {
-    await nodegit.Clone.clone(remoteOptions.remoteUrl, workingDir, {
-      fetchOpts: {
-        callbacks: createCredentialCallback(remoteOptions),
-      },
-    }).catch((err) => {
-      // Errors except CannotConnectError are handled in combine functions.
-      logger!.debug(`Error in cloning: ${remoteOptions.remoteUrl}, ` + err);
-      throw new Err.CannotCloneRepositoryError(err.message);
-    });
+  const res = await nodegit.Clone.clone(remoteOptions.remoteUrl!, workingDir, {
+    fetchOpts: {
+      callbacks: createCredentialCallback(remoteOptions),
+    },
+  }).catch((err) => err);
+
+  let error = '';
+  if (res instanceof Error) {
+    error = res.message;
+  }
+
+  // if (error !== 'undefined') console.warn('connect fetch error: ' + error);
+  switch (true) {
+    case error === '':
+      break;
+
+    case error.startsWith('unsupported URL protocol'):
+    case error.startsWith('malformed URL'):
+      throw new Err.InvalidURLFormatError(error);
+
+    // NodeGit throws them when network is limited.
+    case error.startsWith('failed to send request'):
+    case error.startsWith('failed to resolve address'):
+      throw new Err.ResolvingAddressError(error);
+
+    case error.startsWith('unexpected HTTP status code: 401'): // 401 on Ubuntu
+    case error.startsWith('request failed with status code: 401'): // 401 on Windows
+    case error.startsWith('Method connect has thrown an error'):
+    case error.startsWith(
+      'remote credential provider returned an invalid cred type'
+    ): // on Ubuntu
+    case error.startsWith(
+      'Failed to retrieve list of SSH authentication methods'
+    ):
+    case error.startsWith('too many redirects or authentication replays'):
+      throw new Err.HTTPError401AuthorizationRequired(error);
+
+    case error.startsWith('unexpected HTTP status code: 404'): // 404 on Ubuntu
+    case error.startsWith('request failed with status code: 404'): // 404 on Windows
+      throw new Err.HTTPError404NotFound(error);
+
+    default:
+      throw new Err.CannotConnectError(error);
   }
 }
 
