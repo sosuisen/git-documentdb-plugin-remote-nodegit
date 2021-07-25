@@ -75,7 +75,7 @@ maybe('<remote-nodegit> checkFetch', () => {
       await dbA.open();
 
       const remoteUrl = remoteURLBase + 'test-public.git';
-      const res = await checkFetch(dbA.workingDir, { remoteUrl, connection: { type: 'github' } }, dbA.logger).catch(err => err);
+      const res = await checkFetch(dbA.workingDir, { remoteUrl, connection: { type: 'github' } }, undefined, dbA.logger).catch(err => err);
       expect(res).not.toBeInstanceOf(Error);
   
       await destroyDBs([dbA]);
@@ -89,7 +89,7 @@ maybe('<remote-nodegit> checkFetch', () => {
       await dbA.open();
 
       const remoteUrl = remoteURLBase + 'test-public.git';
-      const res = await checkFetch(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token } }, dbA.logger).catch(err => err);
+      const res = await checkFetch(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token } }, undefined, dbA.logger).catch(err => err);
       expect(res).not.toBeInstanceOf(Error);
   
       await destroyDBs([dbA]);
@@ -103,7 +103,7 @@ maybe('<remote-nodegit> checkFetch', () => {
       await dbA.open();
 
       const remoteUrl = remoteURLBase + 'test-private.git';
-      const res = await checkFetch(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token } }, dbA.logger).catch(err => err);
+      const res = await checkFetch(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token } }, undefined, dbA.logger).catch(err => err);
       expect(res).not.toBeInstanceOf(Error);
   
       await destroyDBs([dbA]);
@@ -117,7 +117,7 @@ maybe('<remote-nodegit> checkFetch', () => {
     });
     await dbA.open();
     const remoteUrl = 'foo-bar';
-    const err = await checkFetch(dbA.workingDir, { remoteUrl }, dbA.logger).catch(err => err);
+    const err = await checkFetch(dbA.workingDir, { remoteUrl }, undefined, dbA.logger).catch(err => err);
     expect(err).toBeInstanceOf(Err.InvalidURLFormatError);
     expect(err.message).toMatch(/^URL format is invalid: Error: unsupported URL protocol/);
 
@@ -131,7 +131,7 @@ maybe('<remote-nodegit> checkFetch', () => {
     });
     await dbA.open();
     const remoteUrl = 'https://foo.example.com:xxxx';
-    const err = await checkFetch(dbA.workingDir, { remoteUrl }, dbA.logger).catch(err => err);
+    const err = await checkFetch(dbA.workingDir, { remoteUrl }, undefined, dbA.logger).catch(err => err);
     expect(err).toBeInstanceOf(Err.InvalidURLFormatError);
     expect(err.message).toMatch(/^URL format is invalid: Error: malformed URL/);
 
@@ -146,7 +146,7 @@ maybe('<remote-nodegit> checkFetch', () => {
     await dbA.open();
 
     const remoteUrl = 'https://foo.bar.example.com/gitddb-plugin/sync-test-invalid.git';
-    const err = await checkFetch(dbA.workingDir, { remoteUrl }, dbA.logger).catch(err => err);
+    const err = await checkFetch(dbA.workingDir, { remoteUrl }, undefined, dbA.logger).catch(err => err);
     expect(err).toBeInstanceOf(Err.ResolvingAddressError);
     expect(err.message).toMatch(/^Cannot resolve address: Error: failed to send request/);
 
@@ -169,7 +169,7 @@ maybe('<remote-nodegit> checkFetch', () => {
         privateKeyPath: path.resolve(userHome, '.ssh/invalid-test'),
         passPhrase: ''
       }
-    }, dbA.logger).catch(err => err);
+    }, undefined, dbA.logger).catch(err => err);
 
     expect(err).toBeInstanceOf(Err.ResolvingAddressError);
     expect(err.message).toMatch(/^Cannot resolve address: Error: failed to resolve address/);
@@ -187,7 +187,7 @@ maybe('<remote-nodegit> checkFetch', () => {
       await dbA.open();
   
       const remoteUrl = remoteURLBase + 'test-private.git';
-      const err = await checkFetch(dbA.workingDir, { remoteUrl, connection: { type: 'github' } }, dbA.logger).catch(err => err);
+      const err = await checkFetch(dbA.workingDir, { remoteUrl, connection: { type: 'github' } }, undefined, dbA.logger).catch(err => err);
   
       expect(err).toBeInstanceOf(Err.HTTPError401AuthorizationRequired);
       expect(err.message).toMatch(/^HTTP Error: 401 Authorization required: Error: request failed with status code: 401/);
@@ -206,7 +206,7 @@ maybe('<remote-nodegit> checkFetch', () => {
 
       let err;
       for (let i = 0; i < 3; i++) {
-        err = await checkFetch(dbA.workingDir, { remoteUrl }, dbA.logger).catch(err => err);
+        err = await checkFetch(dbA.workingDir, { remoteUrl }, undefined, dbA.logger).catch(err => err);
         if (!err.message.startsWith('HTTP Error: 401 Authorization required: Error: too many redirects or authentication replays')) {
           break;
         }
@@ -232,7 +232,7 @@ maybe('<remote-nodegit> checkFetch', () => {
       await dbA.open();
 
       const remoteUrl = remoteURLBase + 'test-private.git';
-      const err = await checkFetch(dbA.workingDir, { remoteUrl }, dbA.logger).catch(err => err);
+      const err = await checkFetch(dbA.workingDir, { remoteUrl }, undefined, dbA.logger).catch(err => err);
       expect(err).toBeInstanceOf(Err.HTTPError401AuthorizationRequired);
       expect(err.message).toMatch(/^HTTP Error: 401 Authorization required: Error: remote credential provider returned an invalid cred type/);
 
@@ -257,7 +257,7 @@ maybe('<remote-nodegit> checkFetch', () => {
           privateKeyPath: path.resolve(userHome, '.ssh/invalid-test'),
           passPhrase: ''
         }
-      }, dbA.logger).catch(err => err);
+      }, undefined, dbA.logger).catch(err => err);
 
       expect(err).toBeInstanceOf(Err.HTTPError401AuthorizationRequired);
       // TODO: How to invoke this error      
@@ -274,7 +274,7 @@ maybe('<remote-nodegit> checkFetch', () => {
       await dbA.open();
   
       const remoteUrl = remoteURLBase + 'test-private.git';
-      const err = await checkFetch(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: 'foo-bar' } }, dbA.logger).catch(err => err);
+      const err = await checkFetch(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: 'foo-bar' } }, undefined, dbA.logger).catch(err => err);
 
       expect(err).toBeInstanceOf(Err.HTTPError401AuthorizationRequired);
       expect(err.message).toMatch(/^HTTP Error: 401 Authorization required: Error: too many redirects or authentication replays/);
@@ -301,7 +301,7 @@ maybe('<remote-nodegit> checkFetch', () => {
           privateKeyPath: path.resolve(userHome, '.ssh/invalid-test'),
           passPhrase: ''
         }
-      }, dbA.logger).catch(err => err);
+      }, undefined, dbA.logger).catch(err => err);
 
       expect(err).toBeInstanceOf(Err.HTTPError401AuthorizationRequired);
       expect(err.message).toMatch(/^HTTP Error: 401 Authorization required: Error: too many redirects or authentication replays/);
@@ -319,7 +319,7 @@ maybe('<remote-nodegit> checkFetch', () => {
       await dbA.open();
 
       const remoteUrl = remoteURLBase + 'sync-test-invalid.git';
-      const err = await checkFetch(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token } }, dbA.logger).catch(err => err);
+      const err = await checkFetch(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token } }, undefined, dbA.logger).catch(err => err);
       expect(err).toBeInstanceOf(Err.HTTPError404NotFound);
       if (process.platform === 'win32') {
         expect(err.message).toMatch(/^HTTP Error: 404 Not Found: Error: request failed with status code: 404/);
@@ -344,7 +344,7 @@ maybe('<remote-nodegit> checkFetch', () => {
     });
     await dbA.open();
     const remoteUrl = 'foo-bar';
-    const err = await checkFetch(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token } }, dbA.logger).catch(err => err);
+    const err = await checkFetch(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token } }, undefined, dbA.logger).catch(err => err);
     expect(err).toBeInstanceOf(Err.InvalidURLFormatError);
     expect(err.message).toMatch(/^URL format is invalid: http protocol required in createCredentialForGitHub/);
 
@@ -359,7 +359,7 @@ maybe('<remote-nodegit> checkFetch', () => {
     await dbA.open();
 
     const remoteUrl = remoteURLBase + 'foo/bar/test.git';
-    await expect(checkFetch(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token } }, dbA.logger)).rejects.toThrowError(Err.InvalidRepositoryURLError);
+    await expect(checkFetch(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token } }, undefined, dbA.logger)).rejects.toThrowError(Err.InvalidRepositoryURLError);
 
     await destroyDBs([dbA]);
   });
@@ -381,7 +381,7 @@ maybe('<remote-nodegit> checkFetch', () => {
         privateKeyPath: path.resolve(userHome, 'bar'),
         passPhrase: ''
       }
-    }, dbA.logger)).rejects.toThrowError(Err.InvalidSSHKeyPathError);
+    }, undefined, dbA.logger)).rejects.toThrowError(Err.InvalidSSHKeyPathError);
 
     await destroyDBs([dbA]);
   });
@@ -395,7 +395,7 @@ maybe('<remote-nodegit> checkFetch', () => {
 
     const remoteUrl = remoteURLBase + 'test-private.git';
     // @ts-ignore
-    await expect(checkFetch(dbA.workingDir, { remoteUrl, connection: { type: 'foo' } }, dbA.logger)).rejects.toThrowError(Err.InvalidAuthenticationTypeError);
+    await expect(checkFetch(dbA.workingDir, { remoteUrl, connection: { type: 'foo' } }, undefined, dbA.logger)).rejects.toThrowError(Err.InvalidAuthenticationTypeError);
 
     await destroyDBs([dbA]);
   });

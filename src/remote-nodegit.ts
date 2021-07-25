@@ -80,18 +80,19 @@ type GitRemoteAction = 'add' | 'change' | 'exist';
 // eslint-disable-next-line complexity
 export async function getOrCreateGitRemote(
   repos: nodegit.Repository,
-  remoteURL: string
+  remoteURL: string,
+  remoteName: string
 ): Promise<[GitRemoteAction, nodegit.Remote]> {
   let result: GitRemoteAction;
   // Check if remote repository already exists
-  let remote = await nodegit.Remote.lookup(repos, 'origin').catch(() => {});
+  let remote = await nodegit.Remote.lookup(repos, remoteName).catch(() => {});
   if (remote === undefined) {
     // Add remote repository
-    remote = await nodegit.Remote.create(repos, 'origin', remoteURL);
+    remote = await nodegit.Remote.create(repos, remoteName, remoteURL);
     result = 'add';
   }
   else if (remote.url() !== remoteURL) {
-    nodegit.Remote.setUrl(repos, 'origin', remoteURL);
+    nodegit.Remote.setUrl(repos, remoteName, remoteURL);
     result = 'change';
   }
   else {
@@ -121,6 +122,7 @@ export async function getOrCreateGitRemote(
 export async function checkFetch(
   workingDir: string,
   options: RemoteOptions,
+  remoteName = 'origin',
   logger?: Logger
 ): Promise<boolean> {
   logger ??= new Logger({
@@ -135,11 +137,11 @@ export async function checkFetch(
   // Get NodeGit.Remote
   const [gitResult, remote] = await getOrCreateGitRemote(
     repos,
-    options.remoteUrl!
+    options.remoteUrl!,
+    remoteName
   );
   logger.debug('Git remote: ' + gitResult);
 
-  const remoteURL = remote.url();
   const error = String(
     await remote
       .connect(nodegit.Enums.DIRECTION.FETCH, callbacks)
@@ -206,6 +208,7 @@ export async function checkFetch(
 export async function fetch(
   workingDir: string,
   remoteOptions: RemoteOptions,
+  remoteName = 'origin',
   logger?: Logger
 ) {
   logger ??= new Logger({
@@ -216,12 +219,12 @@ export async function fetch(
     displayFilePath: 'hidden',
   });
 
-  logger.debug(`sync_worker: fetch: ${remoteOptions.remoteUrl}`);
+  // logger.debug(`sync_worker: fetch: ${remoteOptions.remoteUrl}`);
 
   const repos = await nodegit.Repository.open(workingDir);
   const callbacks = createCredentialCallback(remoteOptions);
   const res = await repos
-    .fetch('origin', {
+    .fetch(remoteName, {
       callbacks,
     })
     .catch((err) => err);
@@ -232,12 +235,12 @@ export async function fetch(
   if (res !== undefined && res !== null) {
     error = res.message;
   }
-  console.log(error);
+
   // if (error !== 'undefined') console.warn('connect fetch error: ' + error);
   switch (true) {
     case error === undefined || error === null:
       break;
-    case error.startsWith("remote 'origin' does not exist"):
+    case /^remote '.+?' does not exist/.test(error):
       throw new Err.InvalidGitRemoteError(error);
     case error.startsWith('unsupported URL protocol'):
     case error.startsWith('malformed URL'):
@@ -269,81 +272,6 @@ export async function fetch(
 }
 
 /**
- * Check connection by PUSH
- *
- * @throws {@link Err.InvalidURLFormatError}
- * @throws {@link Err.RemoteRepositoryNotFoundError}
- * @throws {@link Err.PushPermissionDeniedError}
- * @throws {@link Error}
- *
- * @throws {@link Err.HttpProtocolRequiredError} (from createCredentialForGitHub)
- * @throws {@link Err.InvalidRepositoryURLError} (from createCredentialForGitHub)
- * @throws {@link Err.InvalidSSHKeyPathError} (from createCredentialForSSH)
- *
- * @throws {@link Err.InvalidAuthenticationTypeError} (from createCredential)
- */
-// eslint-disable-next-line complexity
-async function checkPush(
-  workingDir: string,
-  options: RemoteOptions,
-  logger?: Logger
-) {
-  logger ??= new Logger({
-    name: 'plugin-nodegit',
-    minLevel: 'trace',
-    displayDateTime: false,
-    displayFunctionName: false,
-    displayFilePath: 'hidden',
-  });
-  const callbacks = createCredentialCallback(options);
-  const repos = await nodegit.Repository.open(workingDir);
-  // Get NodeGit.Remote
-  const [gitResult, remote] = await getOrCreateGitRemote(
-    repos,
-    options.remoteUrl!
-  );
-  logger.debug('Git remote: ' + gitResult);
-
-  const error = String(
-    await remote
-      .connect(nodegit.Enums.DIRECTION.PUSH, callbacks)
-      .catch((err) => err)
-  );
-  await remote.disconnect();
-
-  // if (error !== 'undefined') console.warn('connect push error: ' + error);
-  switch (true) {
-    case error === 'undefined':
-      break;
-    case error.startsWith('Error: unsupported URL protocol'):
-    case error.startsWith('Error: failed to resolve address'):
-    case error.startsWith('Error: failed to send request'):
-      throw new Err.InvalidURLFormatError(options.remoteUrl!);
-    case error.startsWith('Error: unexpected HTTP status code: 4'): // 401, 404 on Ubuntu
-    case error.startsWith('Error: request failed with status code: 4'): // 401, 404 on Windows
-    case error.startsWith('Error: Method connect has thrown an error'):
-    case error.startsWith('Error: ERROR: Repository not found'): {
-      // Remote repository does not exist, or you do not have permission to the private repository
-      throw new Err.HTTPError404NotFound(options.remoteUrl!);
-    }
-    // Invalid personal access token
-    // Personal access token is read only
-    case error.startsWith(
-      'Error: remote credential provider returned an invalid cred type'
-    ): // on Ubuntu
-    case error.startsWith(
-      'Error: too many redirects or authentication replays'
-    ):
-    case error.startsWith('Error: ERROR: Permission to'): {
-      throw new Err.PushPermissionDeniedError(error);
-    }
-    default:
-      throw new Error(error);
-  }
-  return 'ok';
-}
-
-/**
  * Calc distance
  *
  * @internal
@@ -370,19 +298,32 @@ function calcDistance(
  *
  * @throws {@link Err.UnfetchedCommitExistsError} (from this and validatePushResult())
  * @throws {@link Err.GitFetchError} (from validatePushResult())
- * @throws {@link Err.GitPushError} (from NodeGit.Remote.push())
  *
  * @public
  */
+// eslint-disable-next-line complexity
 export async function push(
   workingDir: string,
-  remoteOptions: RemoteOptions
+  remoteOptions: RemoteOptions,
+  remoteName = 'origin',
+  localBranch = 'refs/heads/main',
+  remoteBranch = 'refs/heads/main',
+  logger?: Logger
 ): Promise<void> {
+  logger ??= new Logger({
+    name: 'plugin-nodegit',
+    minLevel: 'trace',
+    displayDateTime: false,
+    displayFunctionName: false,
+    displayFilePath: 'hidden',
+  });
+
   const repos = await nodegit.Repository.open(workingDir);
-  const remote: nodegit.Remote = await repos.getRemote('origin');
+  const remote: nodegit.Remote = await repos.getRemote(remoteName);
   const callbacks = createCredentialCallback(remoteOptions);
-  await remote
-    .push(['refs/heads/main:refs/heads/main'], {
+
+  const res = await remote
+    .push([`${localBranch}:${remoteBranch}`], {
       callbacks,
     })
     .catch((err: Error) => {
@@ -393,13 +334,46 @@ export async function push(
       ) {
         throw new Err.UnfetchedCommitExistsError();
       }
-      throw new Err.GitPushError(err.message);
+      return err;
+    })
+    .finally(() => {
+      // It leaks memory if not cleanup
+      repos.cleanup();
     });
 
-  await validatePushResult(repos, workingDir, callbacks);
+  let error = '';
+  if (typeof res !== 'number') {
+    error = res.message;
+  }
 
-  // It leaks memory if not cleanup
-  repos.cleanup();
+  console.warn('connect push error: ' + error);
+  switch (true) {
+    case typeof res === 'number':
+      break;
+    case error.startsWith('unsupported URL protocol'):
+    case error.startsWith('failed to resolve address'):
+    case error.startsWith('failed to send request'):
+      throw new Err.InvalidURLFormatError(error);
+    case error.startsWith('unexpected HTTP status code: 4'): // 401, 404 on Ubuntu
+    case error.startsWith('request failed with status code: 4'): // 401, 404 on Windows
+    case error.startsWith('Method connect has thrown an error'): {
+      // Remote repository does not exist, or you do not have permission to the private repository
+      throw new Err.HTTPError404NotFound(error);
+    }
+    // Invalid personal access token
+    // Personal access token is read only
+    case error.startsWith(
+      'remote credential provider returned an invalid cred type'
+    ): // on Ubuntu
+    case error.startsWith('too many redirects or authentication replays'):
+    case error.startsWith('Error: ERROR: Permission to'): {
+      throw new Err.PushPermissionDeniedError(error);
+    }
+    default:
+      throw new Error(error);
+  }
+
+  await validatePushResult(repos, workingDir, callbacks);
 }
 
 /**

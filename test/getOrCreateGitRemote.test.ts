@@ -50,7 +50,8 @@ maybe('<remote-nodegit> getOrCreateGitRemote()', () => {
     const repos = await nodegit.Repository.open(gitDDB.workingDir);
     const [result, remote] = await getOrCreateGitRemote(
       repos,
-      remoteURL
+      remoteURL,
+      'origin'
     );
     expect(result).toBe('add');
 
@@ -67,13 +68,14 @@ maybe('<remote-nodegit> getOrCreateGitRemote()', () => {
     await gitDDB.open();
 
     const repos = await nodegit.Repository.open(gitDDB.workingDir);
-    await getOrCreateGitRemote(repos, remoteURL);
+    await getOrCreateGitRemote(repos, remoteURL, 'origin');
 
     const remoteURL2 = remoteURLBase + serialId();
     // eslint-disable-next-line dot-notation
     const [result, remote] = await getOrCreateGitRemote(
       repos,
-      remoteURL2
+      remoteURL2,
+      'origin'
     );
     expect(result).toBe('change');
 
@@ -90,13 +92,14 @@ maybe('<remote-nodegit> getOrCreateGitRemote()', () => {
     await gitDDB.open();
 
     const repos = await nodegit.Repository.open(gitDDB.workingDir);
-    await getOrCreateGitRemote(repos, remoteURL);
+    await getOrCreateGitRemote(repos, remoteURL, 'origin');
 
     const remoteURL2 = remoteURLBase + serialId();
     // eslint-disable-next-line dot-notation
     const [result, remote] = await getOrCreateGitRemote(
       repos,
-      remoteURL
+      remoteURL,
+      'origin'
     );
     expect(result).toBe('exist');
 
