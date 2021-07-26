@@ -82,7 +82,7 @@ export async function clone(
     // NodeGit throws them when network is limited.
     case error.startsWith('failed to send request'):
     case error.startsWith('failed to resolve address'):
-      throw new Err.ResolvingAddressError(error);
+      throw new Err.NetworkError(error);
 
     case error.startsWith('unexpected HTTP status code: 401'): // 401 on Ubuntu
     case error.startsWith('request failed with status code: 401'): // 401 on Windows
@@ -143,7 +143,7 @@ export async function getOrCreateGitRemote(
  * Check connection by FETCH
  *
  * @throws {@link Err.InvalidURLFormatError}
- * @throws {@link Err.ResolvingAddressError}
+ * @throws {@link Err.NetworkError}
  * @throws {@link Err.HTTPError401AuthorizationRequired}
  * @throws {@link Err.HTTPError404NotFound}
  * @throws {@link Err.CannotConnectError}
@@ -198,7 +198,7 @@ export async function checkFetch(
     // NodeGit throws them when network is limited.
     case error.startsWith('Error: failed to send request'):
     case error.startsWith('Error: failed to resolve address'):
-      throw new Err.ResolvingAddressError(error);
+      throw new Err.NetworkError(error);
 
     case error.startsWith('Error: unexpected HTTP status code: 401'): // 401 on Ubuntu
     case error.startsWith('Error: request failed with status code: 401'): // 401 on Windows
@@ -230,7 +230,7 @@ export async function checkFetch(
  *
  * @throws {@link Err.InvalidGitRemoteError}
  * @throws {@link Err.InvalidURLFormatError}
- * @throws {@link Err.ResolvingAddressError}
+ * @throws {@link Err.NetworkError}
  * @throws {@link Err.HTTPError401AuthorizationRequired}
  * @throws {@link Err.HTTPError404NotFound}
  * @throws {@link Err.CannotConnectError}
@@ -289,7 +289,7 @@ export async function fetch(
     // NodeGit throws them when network is limited.
     case error.startsWith('failed to send request'):
     case error.startsWith('failed to resolve address'):
-      throw new Err.ResolvingAddressError(error);
+      throw new Err.NetworkError(error);
 
     case error.startsWith('unexpected HTTP status code: 401'): // 401 on Ubuntu
     case error.startsWith('request failed with status code: 401'): // 401 on Windows
@@ -340,7 +340,7 @@ function calcDistance(
  * @throws {@link Err.InvalidGitRemoteError}
  * @throws {@link Err.UnfetchedCommitExistsError}
  * @throws {@link Err.InvalidURLFormatError}
- * @throws {@link Err.ResolvingAddressError}
+ * @throws {@link Err.NetworkError}
  * @throws {@link Err.HTTPError401AuthorizationRequired}
  * @throws {@link Err.HTTPError404NotFound}
  * @throws {@link Err.HTTPError403Forbidden}
@@ -423,7 +423,7 @@ export async function push(
     // NodeGit throws them when network is limited.
     case error.startsWith('failed to send request'):
     case error.startsWith('failed to resolve address'):
-      throw new Err.ResolvingAddressError(error);
+      throw new Err.NetworkError(error);
 
     case error.startsWith('unexpected HTTP status code: 401'): // 401 on Ubuntu
     case error.startsWith('request failed with status code: 401'): // 401 on Windows

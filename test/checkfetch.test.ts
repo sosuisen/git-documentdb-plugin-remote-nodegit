@@ -77,7 +77,7 @@ maybe('<remote-nodegit> checkFetch', () => {
       const remoteUrl = remoteURLBase + 'test-public.git';
       const res = await checkFetch(dbA.workingDir, { remoteUrl, connection: { type: 'github' } }).catch(err => err);
       expect(res).not.toBeInstanceOf(Error);
-  
+
       await destroyDBs([dbA]);
     });
 
@@ -91,7 +91,7 @@ maybe('<remote-nodegit> checkFetch', () => {
       const remoteUrl = remoteURLBase + 'test-public.git';
       const res = await checkFetch(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token } }).catch(err => err);
       expect(res).not.toBeInstanceOf(Error);
-  
+
       await destroyDBs([dbA]);
     });
 
@@ -105,7 +105,7 @@ maybe('<remote-nodegit> checkFetch', () => {
       const remoteUrl = remoteURLBase + 'test-private.git';
       const res = await checkFetch(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token } }).catch(err => err);
       expect(res).not.toBeInstanceOf(Error);
-  
+
       await destroyDBs([dbA]);
     });
   });
@@ -138,45 +138,66 @@ maybe('<remote-nodegit> checkFetch', () => {
     await destroyDBs([dbA]);
   });
 
-  it('throws ResolvingAddressError when HTTP host is invalid', async () => {
-    const dbA: GitDocumentDB = new GitDocumentDB({
-      dbName: serialId(),
-      localDir,
+  describe('throws NetworkError', () => {
+    it('when HTTP host is invalid', async () => {
+      const dbA: GitDocumentDB = new GitDocumentDB({
+        dbName: serialId(),
+        localDir,
+      });
+      await dbA.open();
+
+      const remoteUrl = 'https://foo.bar.example.com/gitddb-plugin/sync-test-invalid.git';
+      const err = await checkFetch(dbA.workingDir, { remoteUrl }).catch(err => err);
+      expect(err).toBeInstanceOf(Err.NetworkError);
+      expect(err.message).toMatch(/^Network error: Error: failed to send request/);
+
+      await destroyDBs([dbA]);
     });
-    await dbA.open();
 
-    const remoteUrl = 'https://foo.bar.example.com/gitddb-plugin/sync-test-invalid.git';
-    const err = await checkFetch(dbA.workingDir, { remoteUrl }).catch(err => err);
-    expect(err).toBeInstanceOf(Err.ResolvingAddressError);
-    expect(err.message).toMatch(/^Cannot resolve address: Error: failed to send request/);
+    it('when IP address is invalid', async () => {
+      const dbA: GitDocumentDB = new GitDocumentDB({
+        dbName: serialId(),
+        localDir,
+      });
+      await dbA.open();
 
-    await destroyDBs([dbA]);
-  });
+      const remoteUrl = 'https://127.0.0.1/gitddb-plugin/sync-test-invalid.git';
+      const err = await checkFetch(dbA.workingDir, {
+        remoteUrl,
+        connection: {
+          type: 'github',
+        }
+      }).catch(err => err);
+      expect(err).toBeInstanceOf(Err.NetworkError);
+      expect(err.message).toMatch(/^Network error: Error: failed to send request/);
 
-  it('throws ResolvingAddressError when SSH host is invalid', async () => {
-    const dbA: GitDocumentDB = new GitDocumentDB({
-      dbName: serialId(),
-      localDir,
+      await destroyDBs([dbA]);
     });
-    await dbA.open();
 
-    const remoteUrl = 'git@foo.example.com:bar/sync-test.git';
-    const err = await checkFetch(dbA.workingDir, {
-      remoteUrl,
-      connection: {
-        type: 'ssh',
-        publicKeyPath: path.resolve(userHome, '.ssh/invalid-test.pub'),
-        privateKeyPath: path.resolve(userHome, '.ssh/invalid-test'),
-        passPhrase: ''
-      }
-    }).catch(err => err);
+    it('when SSH host is invalid', async () => {
+      const dbA: GitDocumentDB = new GitDocumentDB({
+        dbName: serialId(),
+        localDir,
+      });
+      await dbA.open();
 
-    expect(err).toBeInstanceOf(Err.ResolvingAddressError);
-    expect(err.message).toMatch(/^Cannot resolve address: Error: failed to resolve address/);
+      const remoteUrl = 'git@foo.example.com:bar/sync-test.git';
+      const err = await checkFetch(dbA.workingDir, {
+        remoteUrl,
+        connection: {
+          type: 'ssh',
+          publicKeyPath: path.resolve(userHome, '.ssh/invalid-test.pub'),
+          privateKeyPath: path.resolve(userHome, '.ssh/invalid-test'),
+          passPhrase: ''
+        }
+      }).catch(err => err);
 
-    await destroyDBs([dbA]);
+      expect(err).toBeInstanceOf(Err.NetworkError);
+      expect(err.message).toMatch(/^Network error: Error: failed to resolve address/);
+
+      await destroyDBs([dbA]);
+    });
   });
-
 
   describe('throws HttpError401AuthorizationRequired', () => {
     it('when personal access token does not exist', async () => {
@@ -185,10 +206,10 @@ maybe('<remote-nodegit> checkFetch', () => {
         localDir,
       });
       await dbA.open();
-  
+
       const remoteUrl = remoteURLBase + 'test-private.git';
       const err = await checkFetch(dbA.workingDir, { remoteUrl, connection: { type: 'github' } }).catch(err => err);
-  
+
       expect(err).toBeInstanceOf(Err.HTTPError401AuthorizationRequired);
       expect(err.message).toMatch(/^HTTP Error: 401 Authorization required: Error: request failed with status code: 401/);
 
@@ -272,7 +293,7 @@ maybe('<remote-nodegit> checkFetch', () => {
         localDir,
       });
       await dbA.open();
-  
+
       const remoteUrl = remoteURLBase + 'test-private.git';
       const err = await checkFetch(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: 'foo-bar' } }).catch(err => err);
 
@@ -281,8 +302,8 @@ maybe('<remote-nodegit> checkFetch', () => {
 
       await destroyDBs([dbA]);
     });
-  
-  
+
+
 
     it('when invalid pair of url and SSH auth', async () => {
       const dbA: GitDocumentDB = new GitDocumentDB({
@@ -327,7 +348,7 @@ maybe('<remote-nodegit> checkFetch', () => {
       else {
         expect(err.message).toMatch(/^HTTP Error: 404 Not Found: unexpected HTTP status code: 404/);
       }
-  
+
       await destroyDBs([dbA]);
 
     });
@@ -402,7 +423,7 @@ maybe('<remote-nodegit> checkFetch', () => {
 
 
   describe('throws CannotConnectError', () => {
-    // ResolvingAddressError is thrown when network is not connected.
+    // NetworkError is thrown when network is not connected.
     // CannotConnectError will be thrown when other unexpected cases.
-  });  
+  });
 });

@@ -144,7 +144,7 @@ maybe('<remote-nodegit> clone', () => {
     await destroyDBs([dbA]);
   });
 
-  it('throws ResolvingAddressError when HTTP host is invalid', async () => {
+  it('throws NetworkError when HTTP host is invalid', async () => {
     const dbA: GitDocumentDB = new GitDocumentDB({
       dbName: serialId(),
       localDir,
@@ -154,13 +154,13 @@ maybe('<remote-nodegit> clone', () => {
     const remoteUrl = 'https://foo.bar.example.com/gitddb-plugin/sync-test-invalid.git';
 
     const err = await clone(dbA.workingDir, { remoteUrl }).catch(err => err);
-    expect(err).toBeInstanceOf(Err.ResolvingAddressError);
-    expect(err.message).toMatch(/^Cannot resolve address: failed to send request/);
+    expect(err).toBeInstanceOf(Err.NetworkError);
+    expect(err.message).toMatch(/^Network error: failed to send request/);
 
     await destroyDBs([dbA]);
   });
 
-  it('throws ResolvingAddressError when SSH host is invalid', async () => {
+  it('throws NetworkError when SSH host is invalid', async () => {
     const dbA: GitDocumentDB = new GitDocumentDB({
       dbName: serialId(),
       localDir,
@@ -179,8 +179,8 @@ maybe('<remote-nodegit> clone', () => {
       }
     }).catch(err => err);
 
-    expect(err).toBeInstanceOf(Err.ResolvingAddressError);
-    expect(err.message).toMatch(/^Cannot resolve address: failed to resolve address/);
+    expect(err).toBeInstanceOf(Err.NetworkError);
+    expect(err.message).toMatch(/^Network error: failed to resolve address/);
 
     await destroyDBs([dbA]);
   });

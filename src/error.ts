@@ -188,9 +188,9 @@ export namespace Err {
   /**
    * @public
    */
-  export class ResolvingAddressError extends BaseError {
+  export class NetworkError extends BaseError {
     constructor(mes: unknown) {
-      super(`Cannot resolve address: ${mes}`);
+      super(`Network error: ${mes}`);
     }
   }
 

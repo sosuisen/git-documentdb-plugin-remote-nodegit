@@ -61,10 +61,10 @@ maybe('<remote-nodegit> fetch', () => {
 
   before(async () => {
     // Remove remote
-    await removeRemoteRepositories(reposPrefix);
+    await removeRemoteRepositories(reposPrefix).catch(err => console.log(err));
   });
 
- 
+
   it('throws InvalidGitRemoteError', async () => {
     const dbA: GitDocumentDB = new GitDocumentDB({
       dbName: serialId(),
@@ -95,10 +95,10 @@ maybe('<remote-nodegit> fetch', () => {
       const remoteUrl = remoteURLBase + 'test-public.git';
       const repos = await nodegit.Repository.open(dbA.workingDir);
       await getOrCreateGitRemote(repos, remoteUrl, 'origin');
-      
+
       const res = await fetch(dbA.workingDir, { remoteUrl, connection: { type: 'github' } }).catch(err => err);
       expect(res).toBeUndefined();
-  
+
       await destroyDBs([dbA]);
     });
 
@@ -115,7 +115,7 @@ maybe('<remote-nodegit> fetch', () => {
 
       const res = await fetch(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token } }).catch(err => err);
       expect(res).toBeUndefined();
-  
+
       await destroyDBs([dbA]);
     });
 
@@ -132,7 +132,7 @@ maybe('<remote-nodegit> fetch', () => {
 
       const res = await fetch(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token } }).catch(err => err);
       expect(res).toBeUndefined();
-  
+
       await destroyDBs([dbA]);
     });
   });
@@ -174,52 +174,77 @@ maybe('<remote-nodegit> fetch', () => {
     await destroyDBs([dbA]);
   });
 
-  it('throws ResolvingAddressError when HTTP host is invalid', async () => {
-    const dbA: GitDocumentDB = new GitDocumentDB({
-      dbName: serialId(),
-      localDir,
+  describe('throws NetworkError', () => {
+    it('when HTTP host is invalid', async () => {
+      const dbA: GitDocumentDB = new GitDocumentDB({
+        dbName: serialId(),
+        localDir,
+      });
+      await dbA.open();
+
+      const remoteUrl = 'https://foo.bar.example.com/gitddb-plugin/sync-test-invalid.git';
+
+      const repos = await nodegit.Repository.open(dbA.workingDir);
+      await getOrCreateGitRemote(repos, remoteUrl, 'origin');
+
+      const err = await fetch(dbA.workingDir, { remoteUrl }).catch(err => err);
+      expect(err).toBeInstanceOf(Err.NetworkError);
+      expect(err.message).toMatch(/^Network error: failed to send request/);
+
+      await destroyDBs([dbA]);
     });
-    await dbA.open();
 
-    const remoteUrl = 'https://foo.bar.example.com/gitddb-plugin/sync-test-invalid.git';
+    it('when IP address is invalid', async () => {
+      const dbA: GitDocumentDB = new GitDocumentDB({
+        dbName: serialId(),
+        localDir,
+      });
+      await dbA.open();
 
-    const repos = await nodegit.Repository.open(dbA.workingDir);
-    await getOrCreateGitRemote(repos, remoteUrl, 'origin');
+      const remoteUrl = 'https://127.0.0.1/gitddb-plugin/sync-test-invalid.git';
+      const repos = await nodegit.Repository.open(dbA.workingDir);
+      await getOrCreateGitRemote(repos, remoteUrl, 'origin');
 
-    const err = await fetch(dbA.workingDir, { remoteUrl }).catch(err => err);
-    expect(err).toBeInstanceOf(Err.ResolvingAddressError);
-    expect(err.message).toMatch(/^Cannot resolve address: failed to send request/);
+      const err = await fetch(dbA.workingDir, {
+        remoteUrl,
+        connection: {
+          type: 'github',
+        }
+      }).catch(err => err);
 
-    await destroyDBs([dbA]);
-  });
+      expect(err).toBeInstanceOf(Err.NetworkError);
+      expect(err.message).toMatch(/^Network error: failed to send request/);
 
-  it('throws ResolvingAddressError when SSH host is invalid', async () => {
-    const dbA: GitDocumentDB = new GitDocumentDB({
-      dbName: serialId(),
-      localDir,
+      await destroyDBs([dbA]);
     });
-    await dbA.open();
 
-    const remoteUrl = 'git@foo.example.com:bar/sync-test.git';
-    const repos = await nodegit.Repository.open(dbA.workingDir);
-    await getOrCreateGitRemote(repos, remoteUrl, 'origin');
+    it('when SSH host is invalid', async () => {
+      const dbA: GitDocumentDB = new GitDocumentDB({
+        dbName: serialId(),
+        localDir,
+      });
+      await dbA.open();
 
-    const err = await fetch(dbA.workingDir, {
-      remoteUrl,
-      connection: {
-        type: 'ssh',
-        publicKeyPath: path.resolve(userHome, '.ssh/invalid-test.pub'),
-        privateKeyPath: path.resolve(userHome, '.ssh/invalid-test'),
-        passPhrase: ''
-      }
-    }).catch(err => err);
+      const remoteUrl = 'git@foo.example.com:bar/sync-test.git';
+      const repos = await nodegit.Repository.open(dbA.workingDir);
+      await getOrCreateGitRemote(repos, remoteUrl, 'origin');
 
-    expect(err).toBeInstanceOf(Err.ResolvingAddressError);
-    expect(err.message).toMatch(/^Cannot resolve address: failed to resolve address/);
+      const err = await fetch(dbA.workingDir, {
+        remoteUrl,
+        connection: {
+          type: 'ssh',
+          publicKeyPath: path.resolve(userHome, '.ssh/invalid-test.pub'),
+          privateKeyPath: path.resolve(userHome, '.ssh/invalid-test'),
+          passPhrase: ''
+        }
+      }).catch(err => err);
 
-    await destroyDBs([dbA]);
+      expect(err).toBeInstanceOf(Err.NetworkError);
+      expect(err.message).toMatch(/^Network error: failed to resolve address/);
+
+      await destroyDBs([dbA]);
+    });
   });
-
 
   describe('throws HttpError401AuthorizationRequired', () => {
     it('when personal access token does not exist', async () => {
@@ -228,13 +253,13 @@ maybe('<remote-nodegit> fetch', () => {
         localDir,
       });
       await dbA.open();
-  
+
       const remoteUrl = remoteURLBase + 'test-private.git';
       const repos = await nodegit.Repository.open(dbA.workingDir);
       await getOrCreateGitRemote(repos, remoteUrl, 'origin');
 
       const err = await fetch(dbA.workingDir, { remoteUrl, connection: { type: 'github' } }).catch(err => err);
-  
+
       expect(err).toBeInstanceOf(Err.HTTPError401AuthorizationRequired);
       expect(err.message).toMatch(/^HTTP Error: 401 Authorization required: request failed with status code: 401/);
 
@@ -325,7 +350,7 @@ maybe('<remote-nodegit> fetch', () => {
         localDir,
       });
       await dbA.open();
-  
+
       const remoteUrl = remoteURLBase + 'test-private.git';
       const repos = await nodegit.Repository.open(dbA.workingDir);
       await getOrCreateGitRemote(repos, remoteUrl, 'origin');
@@ -337,8 +362,8 @@ maybe('<remote-nodegit> fetch', () => {
 
       await destroyDBs([dbA]);
     });
-  
-  
+
+
 
     it('when invalid pair of url and SSH auth', async () => {
       const dbA: GitDocumentDB = new GitDocumentDB({
@@ -388,7 +413,7 @@ maybe('<remote-nodegit> fetch', () => {
       else {
         expect(err.message).toMatch(/^HTTP Error: 404 Not Found: unexpected HTTP status code: 404/);
       }
-  
+
       await destroyDBs([dbA]);
 
     });
@@ -474,7 +499,7 @@ maybe('<remote-nodegit> fetch', () => {
   });
 
   describe('throws CannotConnectError', () => {
-    // ResolvingAddressError is thrown when network is not connected.
+    // NetworkError is thrown when network is not connected.
     // CannotConnectError will be thrown when other unexpected cases.
-  });  
+  });
 });
