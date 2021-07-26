@@ -6,9 +6,14 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
-import nodegit from '@sosuisen/nodegit';
+import nodegit from 'nodegit';
 import fs from 'fs-extra';
-import { Err } from './error';
+import {
+  InvalidAuthenticationTypeError,
+  InvalidRepositoryURLError,
+  InvalidSSHKeyPathError,
+  InvalidURLFormatError,
+} from 'git-documentdb-remote-errors';
 import {
   ConnectionSettingsGitHub,
   ConnectionSettingsSSH,
@@ -18,14 +23,14 @@ import {
 /**
  * Insert credential options for GitHub
  *
- * @throws {@link Err.HttpProtocolRequiredError}
- * @throws {@link Err.InvalidRepositoryURLError}
+ * @throws {@link InvalidURLFormatError}
+ * @throws {@link InvalidRepositoryURLError}
  *
  * @internal
  */
 function createCredentialForGitHub(options: RemoteOptions) {
   if (!options.remoteUrl!.match(/^https?:\/\//)) {
-    throw new Err.InvalidURLFormatError(
+    throw new InvalidURLFormatError(
       'http protocol required in createCredentialForGitHub'
     );
   }
@@ -36,7 +41,7 @@ function createCredentialForGitHub(options: RemoteOptions) {
   const urlArray = options.remoteUrl!.replace(/^https?:\/\//, '').split('/');
   // github.com/account_name/repository_name
   if (urlArray.length !== 3) {
-    throw new Err.InvalidRepositoryURLError(options.remoteUrl!);
+    throw new InvalidRepositoryURLError(options.remoteUrl!);
   }
   const owner = urlArray[urlArray.length - 2];
   const credentials = () => {
@@ -51,7 +56,7 @@ function createCredentialForGitHub(options: RemoteOptions) {
 /**
  * Create credential options for SSH
  *
- * @throws Err.InvalidSSHKeyPathError
+ * @throws InvalidSSHKeyPathError
  *
  * @internal
  */
@@ -61,13 +66,13 @@ function createCredentialForSSH(options: RemoteOptions) {
     connection.privateKeyPath === undefined ||
     !fs.existsSync(connection.privateKeyPath)
   ) {
-    throw new Err.InvalidSSHKeyPathError();
+    throw new InvalidSSHKeyPathError();
   }
   if (
     connection.publicKeyPath === undefined ||
     !fs.existsSync(connection.publicKeyPath)
   ) {
-    throw new Err.InvalidSSHKeyPathError();
+    throw new InvalidSSHKeyPathError();
   }
   connection.passPhrase ??= '';
 
@@ -85,11 +90,11 @@ function createCredentialForSSH(options: RemoteOptions) {
 /**
  * Create credential options
  *
- * @throws {@link Err.HttpProtocolRequiredError} (from createCredentialForGitHub)
- * @throws {@link Err.InvalidRepositoryURLError} (from createCredentialForGitHub)
- * @throws {@link Err.InvalidSSHKeyPathError} (from createCredentialForSSH)
+ * @throws {@link InvalidURLFormatError} (from createCredentialForGitHub)
+ * @throws {@link InvalidRepositoryURLError} (from createCredentialForGitHub)
+ * @throws {@link InvalidSSHKeyPathError} (from createCredentialForSSH)
  *
- * @throws {@link Err.InvalidAuthenticationTypeError}
+ * @throws {@link InvalidAuthenticationTypeError}
  *
  * @internal
  */
@@ -107,7 +112,7 @@ export function createCredentialCallback(options: RemoteOptions) {
   }
   else {
     // @ts-ignore
-    throw new Err.InvalidAuthenticationTypeError(options.connection.type);
+    throw new InvalidAuthenticationTypeError(options.connection.type);
   }
 
   let callbacks;

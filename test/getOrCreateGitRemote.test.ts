@@ -1,9 +1,10 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import path from 'path';
 import fs from 'fs-extra';
-import nodegit from '@sosuisen/nodegit';
-import { getOrCreateGitRemote } from '../src/remote-nodegit';
+import nodegit from 'nodegit';
 import expect from 'expect';
 import { GitDocumentDB } from 'git-documentdb';
+import { getOrCreateGitRemote } from '../src/remote-nodegit';
 import { destroyDBs } from './remote_utils';
 
 const reposPrefix = 'test_remote_nodegit_git_remote___';

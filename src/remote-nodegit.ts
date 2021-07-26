@@ -7,10 +7,19 @@
  */
 
 import fs from 'fs';
-import nodegit, { RemoteCallbacks } from '@sosuisen/nodegit';
+import nodegit, { RemoteCallbacks } from 'nodegit';
 import git from 'isomorphic-git';
 import { Logger } from 'tslog';
-import { Err } from './error';
+import {
+  CannotConnectError,
+  HTTPError401AuthorizationRequired,
+  HTTPError403Forbidden,
+  HTTPError404NotFound,
+  InvalidGitRemoteError,
+  InvalidURLFormatError,
+  NetworkError,
+  UnfetchedCommitExistsError,
+} from 'git-documentdb-remote-errors';
 import { RemoteOptions } from './types';
 import { createCredentialCallback } from './authentication';
 
@@ -36,17 +45,17 @@ export const name = 'nodegit';
 /**
  * Clone
  *
- * @throws {@link Err.InvalidURLFormatError}
- * @throws {@link Err.NetworkError}
- * @throws {@link Err.HTTPError401AuthorizationRequired}
- * @throws {@link Err.HTTPError404NotFound}
- * @throws {@link Err.CannotConnectError}
+ * @throws {@link InvalidURLFormatError}
+ * @throws {@link NetworkError}
+ * @throws {@link HTTPError401AuthorizationRequired}
+ * @throws {@link HTTPError404NotFound}
+ * @throws {@link CannotConnectError}
  *
- * @throws {@link Err.HttpProtocolRequiredError} (from createCredentialForGitHub)
- * @throws {@link Err.InvalidRepositoryURLError} (from createCredentialForGitHub)
- * @throws {@link Err.InvalidSSHKeyPathError} (from createCredentialForSSH)
+ * @throws {@link HttpProtocolRequiredError} (from createCredentialForGitHub)
+ * @throws {@link InvalidRepositoryURLError} (from createCredentialForGitHub)
+ * @throws {@link InvalidSSHKeyPathError} (from createCredentialForSSH)
  *
- * @throws {@link Err.InvalidAuthenticationTypeError} (from createCredential)
+ * @throws {@link InvalidAuthenticationTypeError} (from createCredential)
  */
 // eslint-disable-next-line complexity
 export async function clone(
@@ -81,12 +90,12 @@ export async function clone(
 
     case error.startsWith('unsupported URL protocol'):
     case error.startsWith('malformed URL'):
-      throw new Err.InvalidURLFormatError(error);
+      throw new InvalidURLFormatError(error);
 
     // NodeGit throws them when network is limited.
     case error.startsWith('failed to send request'):
     case error.startsWith('failed to resolve address'):
-      throw new Err.NetworkError(error);
+      throw new NetworkError(error);
 
     case error.startsWith('unexpected HTTP status code: 401'): // 401 on Ubuntu
     case error.startsWith('request failed with status code: 401'): // 401 on Windows
@@ -98,14 +107,14 @@ export async function clone(
       'Failed to retrieve list of SSH authentication methods'
     ):
     case error.startsWith('too many redirects or authentication replays'):
-      throw new Err.HTTPError401AuthorizationRequired(error);
+      throw new HTTPError401AuthorizationRequired(error);
 
     case error.startsWith('unexpected HTTP status code: 404'): // 404 on Ubuntu
     case error.startsWith('request failed with status code: 404'): // 404 on Windows
-      throw new Err.HTTPError404NotFound(error);
+      throw new HTTPError404NotFound(error);
 
     default:
-      throw new Err.CannotConnectError(error);
+      throw new CannotConnectError(error);
   }
 }
 
@@ -146,17 +155,17 @@ export async function getOrCreateGitRemote(
 /**
  * Check connection by FETCH
  *
- * @throws {@link Err.InvalidURLFormatError}
- * @throws {@link Err.NetworkError}
- * @throws {@link Err.HTTPError401AuthorizationRequired}
- * @throws {@link Err.HTTPError404NotFound}
- * @throws {@link Err.CannotConnectError}
+ * @throws {@link InvalidURLFormatError}
+ * @throws {@link NetworkError}
+ * @throws {@link HTTPError401AuthorizationRequired}
+ * @throws {@link HTTPError404NotFound}
+ * @throws {@link CannotConnectError}
  *
- * @throws {@link Err.HttpProtocolRequiredError} (from createCredentialForGitHub)
- * @throws {@link Err.InvalidRepositoryURLError} (from createCredentialForGitHub)
- * @throws {@link Err.InvalidSSHKeyPathError} (from createCredentialForSSH)
+ * @throws {@link HttpProtocolRequiredError} (from createCredentialForGitHub)
+ * @throws {@link InvalidRepositoryURLError} (from createCredentialForGitHub)
+ * @throws {@link InvalidSSHKeyPathError} (from createCredentialForSSH)
  *
- * @throws {@link Err.InvalidAuthenticationTypeError} (from createCredential)
+ * @throws {@link InvalidAuthenticationTypeError} (from createCredential)
  *
  * @public
  */
@@ -197,12 +206,12 @@ export async function checkFetch(
       break;
     case error.startsWith('Error: unsupported URL protocol'):
     case error.startsWith('Error: malformed URL'):
-      throw new Err.InvalidURLFormatError(error);
+      throw new InvalidURLFormatError(error);
 
     // NodeGit throws them when network is limited.
     case error.startsWith('Error: failed to send request'):
     case error.startsWith('Error: failed to resolve address'):
-      throw new Err.NetworkError(error);
+      throw new NetworkError(error);
 
     case error.startsWith('Error: unexpected HTTP status code: 401'): // 401 on Ubuntu
     case error.startsWith('Error: request failed with status code: 401'): // 401 on Windows
@@ -216,14 +225,14 @@ export async function checkFetch(
     case error.startsWith(
       'Error: too many redirects or authentication replays'
     ):
-      throw new Err.HTTPError401AuthorizationRequired(error);
+      throw new HTTPError401AuthorizationRequired(error);
 
     case error.startsWith('Error: unexpected HTTP status code: 404'): // 404 on Ubuntu
     case error.startsWith('Error: request failed with status code: 404'): // 404 on Windows
-      throw new Err.HTTPError404NotFound(error);
+      throw new HTTPError404NotFound(error);
 
     default:
-      throw new Err.CannotConnectError(error);
+      throw new CannotConnectError(error);
   }
 
   return true;
@@ -232,18 +241,18 @@ export async function checkFetch(
 /**
  * git fetch
  *
- * @throws {@link Err.InvalidGitRemoteError}
- * @throws {@link Err.InvalidURLFormatError}
- * @throws {@link Err.NetworkError}
- * @throws {@link Err.HTTPError401AuthorizationRequired}
- * @throws {@link Err.HTTPError404NotFound}
- * @throws {@link Err.CannotConnectError}
+ * @throws {@link InvalidGitRemoteError}
+ * @throws {@link InvalidURLFormatError}
+ * @throws {@link NetworkError}
+ * @throws {@link HTTPError401AuthorizationRequired}
+ * @throws {@link HTTPError404NotFound}
+ * @throws {@link CannotConnectError}
  *
- * @throws {@link Err.HttpProtocolRequiredError} (from createCredentialForGitHub)
- * @throws {@link Err.InvalidRepositoryURLError} (from createCredentialForGitHub)
- * @throws {@link Err.InvalidSSHKeyPathError} (from createCredentialForSSH)
+ * @throws {@link HttpProtocolRequiredError} (from createCredentialForGitHub)
+ * @throws {@link InvalidRepositoryURLError} (from createCredentialForGitHub)
+ * @throws {@link InvalidSSHKeyPathError} (from createCredentialForSSH)
  *
- * @throws {@link Err.InvalidAuthenticationTypeError} (from createCredential)
+ * @throws {@link InvalidAuthenticationTypeError} (from createCredential)
  *
  * @public
  */
@@ -284,16 +293,16 @@ export async function fetch(
     case error === undefined || error === null:
       break;
     case /^remote '.+?' does not exist/.test(error):
-      throw new Err.InvalidGitRemoteError(error);
+      throw new InvalidGitRemoteError(error);
 
     case error.startsWith('unsupported URL protocol'):
     case error.startsWith('malformed URL'):
-      throw new Err.InvalidURLFormatError(error);
+      throw new InvalidURLFormatError(error);
 
     // NodeGit throws them when network is limited.
     case error.startsWith('failed to send request'):
     case error.startsWith('failed to resolve address'):
-      throw new Err.NetworkError(error);
+      throw new NetworkError(error);
 
     case error.startsWith('unexpected HTTP status code: 401'): // 401 on Ubuntu
     case error.startsWith('request failed with status code: 401'): // 401 on Windows
@@ -305,14 +314,14 @@ export async function fetch(
       'Failed to retrieve list of SSH authentication methods'
     ):
     case error.startsWith('too many redirects or authentication replays'):
-      throw new Err.HTTPError401AuthorizationRequired(error);
+      throw new HTTPError401AuthorizationRequired(error);
 
     case error.startsWith('unexpected HTTP status code: 404'): // 404 on Ubuntu
     case error.startsWith('request failed with status code: 404'): // 404 on Windows
-      throw new Err.HTTPError404NotFound(error);
+      throw new HTTPError404NotFound(error);
 
     default:
-      throw new Err.CannotConnectError(error);
+      throw new CannotConnectError(error);
   }
 }
 
@@ -341,23 +350,23 @@ function calcDistance(
 /**
  * git push
  *
- * @throws {@link Err.InvalidGitRemoteError}
- * @throws {@link Err.UnfetchedCommitExistsError}
- * @throws {@link Err.InvalidURLFormatError}
- * @throws {@link Err.NetworkError}
- * @throws {@link Err.HTTPError401AuthorizationRequired}
- * @throws {@link Err.HTTPError404NotFound}
- * @throws {@link Err.HTTPError403Forbidden}
- * @throws {@link Err.CannotConnectError}
+ * @throws {@link InvalidGitRemoteError}
+ * @throws {@link UnfetchedCommitExistsError}
+ * @throws {@link InvalidURLFormatError}
+ * @throws {@link NetworkError}
+ * @throws {@link HTTPError401AuthorizationRequired}
+ * @throws {@link HTTPError404NotFound}
+ * @throws {@link HTTPError403Forbidden}
+ * @throws {@link CannotConnectError}
  *
- * @throws {@link Err.UnfetchedCommitExistsError} (from validatePushResult())
- * @throws {@link Err.CannotConnectError} (from validatePushResult())
+ * @throws {@link UnfetchedCommitExistsError} (from validatePushResult())
+ * @throws {@link CannotConnectError} (from validatePushResult())
  *
- * @throws {@link Err.HttpProtocolRequiredError} (from createCredentialForGitHub)
- * @throws {@link Err.InvalidRepositoryURLError} (from createCredentialForGitHub)
- * @throws {@link Err.InvalidSSHKeyPathError} (from createCredentialForSSH)
+ * @throws {@link HttpProtocolRequiredError} (from createCredentialForGitHub)
+ * @throws {@link InvalidRepositoryURLError} (from createCredentialForGitHub)
+ * @throws {@link InvalidSSHKeyPathError} (from createCredentialForSSH)
  *
- * @throws {@link Err.InvalidAuthenticationTypeError} (from createCredential)
+ * @throws {@link InvalidAuthenticationTypeError} (from createCredential)
  *
  * @public
  */
@@ -385,7 +394,7 @@ export async function push(
     .getRemote(remoteName)
     .catch((err) => {
       if (/^remote '.+?' does not exist/.test(err.message)) {
-        throw new Err.InvalidGitRemoteError(err.message);
+        throw new InvalidGitRemoteError(err.message);
       }
       throw err;
     });
@@ -401,7 +410,7 @@ export async function push(
           'cannot push because a reference that you are trying to update on the remote contains commits that are not present locally'
         )
       ) {
-        throw new Err.UnfetchedCommitExistsError();
+        throw new UnfetchedCommitExistsError();
       }
       return err;
     })
@@ -422,12 +431,12 @@ export async function push(
 
     case error.startsWith('unsupported URL protocol'):
     case error.startsWith('malformed URL'):
-      throw new Err.InvalidURLFormatError(error);
+      throw new InvalidURLFormatError(error);
 
     // NodeGit throws them when network is limited.
     case error.startsWith('failed to send request'):
     case error.startsWith('failed to resolve address'):
-      throw new Err.NetworkError(error);
+      throw new NetworkError(error);
 
     case error.startsWith('unexpected HTTP status code: 401'): // 401 on Ubuntu
     case error.startsWith('request failed with status code: 401'): // 401 on Windows
@@ -439,20 +448,20 @@ export async function push(
       'Failed to retrieve list of SSH authentication methods'
     ):
     case error.startsWith('too many redirects or authentication replays'):
-      throw new Err.HTTPError401AuthorizationRequired(error);
+      throw new HTTPError401AuthorizationRequired(error);
 
     case error.startsWith('unexpected HTTP status code: 404'): // 404 on Ubuntu
     case error.startsWith('request failed with status code: 404'): // 404 on Windows
-      throw new Err.HTTPError404NotFound(error);
+      throw new HTTPError404NotFound(error);
 
     case error.startsWith('unexpected HTTP status code: 403'): // 403 on Ubuntu
     case error.startsWith('request failed with status code: 403'): // 403 on Windows
     case error.startsWith('Error: ERROR: Permission to'): {
-      throw new Err.HTTPError403Forbidden(error);
+      throw new HTTPError403Forbidden(error);
     }
 
     default:
-      throw new Err.CannotConnectError(error);
+      throw new CannotConnectError(error);
   }
 
   await validatePushResult(repos, workingDir, callbacks);
@@ -463,8 +472,8 @@ export async function push(
  * 'cannot push because a reference that you are trying to update on the remote contains commits that are not present locally'
  * So check remote changes again.
  *
- * @throws {@link Err.CannotConnectError}
- * @throws {@link Err.UnfetchedCommitExistsError}
+ * @throws {@link CannotConnectError}
+ * @throws {@link UnfetchedCommitExistsError}
  */
 async function validatePushResult(
   repos: nodegit.Repository,
@@ -478,7 +487,7 @@ async function validatePushResult(
     .catch((err) => {
       // push() already check errors except network errors.
       // So throw only network errors here.
-      throw new Err.CannotConnectError(err.message);
+      throw new CannotConnectError(err.message);
     })
     .finally(() => {
       repos.cleanup();
@@ -509,6 +518,6 @@ async function validatePushResult(
   );
 
   if (distance.behind && distance.behind > 0) {
-    throw new Err.UnfetchedCommitExistsError();
+    throw new UnfetchedCommitExistsError();
   }
 }

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 /**
  * GitDocumentDB plugin for remote connection using NodeGit
  * Copyright (c) Hidekazu Kubota
@@ -6,14 +7,29 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
-import nodegit from '@sosuisen/nodegit';
 import path from 'path';
+import nodegit from 'nodegit';
 import fs from 'fs-extra';
-import { createClonedDatabases, destroyDBs, removeRemoteRepositories } from './remote_utils';
-import { clone, getOrCreateGitRemote, push } from '../src/remote-nodegit';
 import expect from 'expect';
-import { Err } from '../src/error';
+import {
+  HTTPError401AuthorizationRequired,
+  HTTPError403Forbidden,
+  HTTPError404NotFound,
+  InvalidAuthenticationTypeError,
+  InvalidGitRemoteError,
+  InvalidRepositoryURLError,
+  InvalidSSHKeyPathError,
+  InvalidURLFormatError,
+  NetworkError,
+  UnfetchedCommitExistsError,
+} from 'git-documentdb-remote-errors';
 import { GitDocumentDB, RemoteOptions } from 'git-documentdb';
+import { clone, getOrCreateGitRemote, push } from '../src/remote-nodegit';
+import {
+  createClonedDatabases,
+  destroyDBs,
+  removeRemoteRepositories,
+} from './remote_utils';
 
 const reposPrefix = 'test_remote_nodegit_push___';
 const localDir = `./test/database_push`;
@@ -38,7 +54,7 @@ after(() => {
 
 /**
  * Prerequisites
- * 
+ *
  * Environment variables:
  *   GITDDB_GITHUB_USER_URL: URL of your GitHub account
  *     e.g.) https://github.com/foo/
@@ -46,7 +62,8 @@ after(() => {
  * GitHub repositories:
  *   remoteURLBase + 'test-private.git' must be a private repository.
  */
-const userHome = process.env[process.platform == "win32" ? "USERPROFILE" : "HOME"] ?? '';
+const userHome =
+  process.env[process.platform === 'win32' ? 'USERPROFILE' : 'HOME'] ?? '';
 
 const maybe =
   process.env.GITDDB_GITHUB_USER_URL && process.env.GITDDB_PERSONAL_ACCESS_TOKEN
@@ -61,7 +78,9 @@ maybe('<remote-nodegit> push', () => {
 
   before(async () => {
     // Remove remote
-    await removeRemoteRepositories(reposPrefix).catch(err => console.log(err));
+    await removeRemoteRepositories(reposPrefix).catch((err) =>
+      console.log(err)
+    );
   });
 
   it('throws InvalidGitRemoteError', async () => {
@@ -75,13 +94,19 @@ maybe('<remote-nodegit> push', () => {
     const repos = await nodegit.Repository.open(dbA.workingDir);
     // await getOrCreateGitRemote(repos, remoteUrl, 'origin');
 
-    const err = await push(dbA.workingDir, { remoteUrl }, undefined, undefined).catch(err => err);
+    const err = await push(
+      dbA.workingDir,
+      { remoteUrl },
+      undefined,
+      undefined
+    ).catch((error) => error);
 
-    expect(err).toBeInstanceOf(Err.InvalidGitRemoteError);
-    expect(err.message).toMatch(/^Invalid Git remote: remote 'origin' does not exist/);
+    expect(err).toBeInstanceOf(InvalidGitRemoteError);
+    expect(err.message).toMatch(
+      /^Invalid Git remote: remote 'origin' does not exist/
+    );
 
     await destroyDBs([dbA]);
-
   });
 
   describe('succeeds', () => {
@@ -92,12 +117,18 @@ maybe('<remote-nodegit> push', () => {
       });
       const remoteUrl = remoteURLBase + 'test-public.git';
       fs.ensureDirSync(dbA.workingDir);
-      await clone(dbA.workingDir, { remoteUrl: remoteUrl, connection: { type: 'github', personalAccessToken: token } });
+      await clone(dbA.workingDir, {
+        remoteUrl: remoteUrl,
+        connection: { type: 'github', personalAccessToken: token },
+      });
       await dbA.open();
       const repos = await nodegit.Repository.open(dbA.workingDir);
       await getOrCreateGitRemote(repos, remoteUrl, 'origin');
 
-      const res = await push(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token } }).catch(err => err);
+      const res = await push(dbA.workingDir, {
+        remoteUrl,
+        connection: { type: 'github', personalAccessToken: token },
+      }).catch((error) => error);
       expect(res).toBeUndefined();
 
       await destroyDBs([dbA]);
@@ -111,12 +142,18 @@ maybe('<remote-nodegit> push', () => {
 
       const remoteUrl = remoteURLBase + 'test-private.git';
       fs.ensureDirSync(dbA.workingDir);
-      await clone(dbA.workingDir, { remoteUrl: remoteUrl, connection: { type: 'github', personalAccessToken: token } });
+      await clone(dbA.workingDir, {
+        remoteUrl: remoteUrl,
+        connection: { type: 'github', personalAccessToken: token },
+      });
       await dbA.open();
       const repos = await nodegit.Repository.open(dbA.workingDir);
       await getOrCreateGitRemote(repos, remoteUrl, 'origin');
 
-      const res = await push(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token } }).catch(err => err);
+      const res = await push(dbA.workingDir, {
+        remoteUrl,
+        connection: { type: 'github', personalAccessToken: token },
+      }).catch((error) => error);
       expect(res).toBeUndefined();
 
       await destroyDBs([dbA]);
@@ -135,10 +172,15 @@ maybe('<remote-nodegit> push', () => {
     const repos = await nodegit.Repository.open(dbA.workingDir);
     await getOrCreateGitRemote(repos, remoteUrl, 'origin');
 
-    const err = await push(dbA.workingDir, { remoteUrl, connection: { type: 'none' } }).catch(err => err);
+    const err = await push(dbA.workingDir, {
+      remoteUrl,
+      connection: { type: 'none' },
+    }).catch((error) => error);
 
-    expect(err).toBeInstanceOf(Err.InvalidURLFormatError);
-    expect(err.message).toMatch(/^URL format is invalid: unsupported URL protocol/);
+    expect(err).toBeInstanceOf(InvalidURLFormatError);
+    expect(err.message).toMatch(
+      /^URL format is invalid: unsupported URL protocol/
+    );
 
     await destroyDBs([dbA]);
   });
@@ -154,9 +196,12 @@ maybe('<remote-nodegit> push', () => {
     const repos = await nodegit.Repository.open(dbA.workingDir);
     await getOrCreateGitRemote(repos, remoteUrl, 'origin');
 
-    const err = await push(dbA.workingDir, { remoteUrl, connection: { type: 'none' } }).catch(err => err);
+    const err = await push(dbA.workingDir, {
+      remoteUrl,
+      connection: { type: 'none' },
+    }).catch((error) => error);
 
-    expect(err).toBeInstanceOf(Err.InvalidURLFormatError);
+    expect(err).toBeInstanceOf(InvalidURLFormatError);
     expect(err.message).toMatch(/^URL format is invalid: malformed URL/);
 
     await destroyDBs([dbA]);
@@ -170,19 +215,22 @@ maybe('<remote-nodegit> push', () => {
       });
       await dbA.open();
 
-      const remoteUrl = 'https://foo.bar.example.com/gitddb-plugin/sync-test-invalid.git';
+      const remoteUrl =
+        'https://foo.bar.example.com/gitddb-plugin/sync-test-invalid.git';
 
       const repos = await nodegit.Repository.open(dbA.workingDir);
       await getOrCreateGitRemote(repos, remoteUrl, 'origin');
 
-      const err = await push(dbA.workingDir, { remoteUrl, connection: { type: 'none' } }).catch(err => err);
+      const err = await push(dbA.workingDir, {
+        remoteUrl,
+        connection: { type: 'none' },
+      }).catch((error) => error);
 
-      expect(err).toBeInstanceOf(Err.NetworkError);
+      expect(err).toBeInstanceOf(NetworkError);
       expect(err.message).toMatch(/^Network error: failed to send request/);
 
       await destroyDBs([dbA]);
     });
-
 
     it('when IP address is invalid', async () => {
       const dbA: GitDocumentDB = new GitDocumentDB({
@@ -200,10 +248,10 @@ maybe('<remote-nodegit> push', () => {
         remoteUrl,
         connection: {
           type: 'github',
-        }
-      }).catch(err => err);
+        },
+      }).catch((error) => error);
 
-      expect(err).toBeInstanceOf(Err.NetworkError);
+      expect(err).toBeInstanceOf(NetworkError);
       expect(err.message).toMatch(/^Network error: failed to send request/);
 
       await destroyDBs([dbA]);
@@ -226,11 +274,11 @@ maybe('<remote-nodegit> push', () => {
           type: 'ssh',
           publicKeyPath: path.resolve(userHome, '.ssh/invalid-test.pub'),
           privateKeyPath: path.resolve(userHome, '.ssh/invalid-test'),
-          passPhrase: ''
-        }
-      }).catch(err => err);
+          passPhrase: '',
+        },
+      }).catch((error) => error);
 
-      expect(err).toBeInstanceOf(Err.NetworkError);
+      expect(err).toBeInstanceOf(NetworkError);
       expect(err.message).toMatch(/^Network error: failed to resolve address/);
 
       await destroyDBs([dbA]);
@@ -249,10 +297,15 @@ maybe('<remote-nodegit> push', () => {
       const repos = await nodegit.Repository.open(dbA.workingDir);
       await getOrCreateGitRemote(repos, remoteUrl, 'origin');
 
-      const err = await push(dbA.workingDir, { remoteUrl, connection: { type: 'github' } }).catch(err => err);
+      const err = await push(dbA.workingDir, {
+        remoteUrl,
+        connection: { type: 'github' },
+      }).catch((error) => error);
 
-      expect(err).toBeInstanceOf(Err.HTTPError401AuthorizationRequired);
-      expect(err.message).toMatch(/^HTTP Error: 401 Authorization required: request failed with status code: 401/);
+      expect(err).toBeInstanceOf(HTTPError401AuthorizationRequired);
+      expect(err.message).toMatch(
+        /^HTTP Error: 401 Authorization required: request failed with status code: 401/
+      );
 
       await destroyDBs([dbA]);
     });
@@ -270,22 +323,30 @@ maybe('<remote-nodegit> push', () => {
 
       let err;
       for (let i = 0; i < 3; i++) {
-        err = await push(dbA.workingDir, { remoteUrl }).catch(err => err);
-        if (!err.message.startsWith('HTTP Error: 401 Authorization required: too many redirects or authentication replays')) {
+        // eslint-disable-next-line no-await-in-loop
+        err = await push(dbA.workingDir, { remoteUrl }).catch((error) => error);
+        if (
+          !err.message.startsWith(
+            'HTTP Error: 401 Authorization required: too many redirects or authentication replays'
+          )
+        ) {
           break;
         }
       }
-      expect(err).toBeInstanceOf(Err.HTTPError401AuthorizationRequired);
+      expect(err).toBeInstanceOf(HTTPError401AuthorizationRequired);
       if (process.platform === 'win32') {
-        expect(err.message).toMatch(/^HTTP Error: 401 Authorization required: request failed with status code: 401/);
+        expect(err.message).toMatch(
+          /^HTTP Error: 401 Authorization required: request failed with status code: 401/
+        );
       }
       else {
-        expect(err.message).toMatch(/^HTTP Error: 401 Authorization required: unexpected HTTP status code: 401/);
+        expect(err.message).toMatch(
+          /^HTTP Error: 401 Authorization required: unexpected HTTP status code: 401/
+        );
       }
 
       await destroyDBs([dbA]);
     });
-
 
     it.skip('when XXXX?', async () => {
       // TODO: This will invoke on ubuntu
@@ -299,9 +360,13 @@ maybe('<remote-nodegit> push', () => {
       const repos = await nodegit.Repository.open(dbA.workingDir);
       await getOrCreateGitRemote(repos, remoteUrl, 'origin');
 
-      const err = await push(dbA.workingDir, { remoteUrl }).catch(err => err);
-      expect(err).toBeInstanceOf(Err.HTTPError401AuthorizationRequired);
-      expect(err.message).toMatch(/^HTTP Error: 401 Authorization required: remote credential provider returned an invalid cred type/);
+      const err = await push(dbA.workingDir, { remoteUrl }).catch(
+        (error) => error
+      );
+      expect(err).toBeInstanceOf(HTTPError401AuthorizationRequired);
+      expect(err.message).toMatch(
+        /^HTTP Error: 401 Authorization required: remote credential provider returned an invalid cred type/
+      );
 
       await destroyDBs([dbA]);
     });
@@ -324,13 +389,15 @@ maybe('<remote-nodegit> push', () => {
           type: 'ssh',
           publicKeyPath: path.resolve(userHome, '.ssh/invalid-test.pub'),
           privateKeyPath: path.resolve(userHome, '.ssh/invalid-test'),
-          passPhrase: ''
-        }
-      }).catch(err => err);
+          passPhrase: '',
+        },
+      }).catch((error) => error);
 
-      expect(err).toBeInstanceOf(Err.HTTPError401AuthorizationRequired);
-      // TODO: How to invoke this error      
-      expect(err.message).toMatch(/^HTTP Error: 401 Authorization required: Failed to retrieve list of SSH authentication methods/);
+      expect(err).toBeInstanceOf(HTTPError401AuthorizationRequired);
+      // TODO: How to invoke this error
+      expect(err.message).toMatch(
+        /^HTTP Error: 401 Authorization required: Failed to retrieve list of SSH authentication methods/
+      );
 
       await destroyDBs([dbA]);
     });
@@ -346,15 +413,18 @@ maybe('<remote-nodegit> push', () => {
       const repos = await nodegit.Repository.open(dbA.workingDir);
       await getOrCreateGitRemote(repos, remoteUrl, 'origin');
 
-      const err = await push(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: 'foo-bar' } }).catch(err => err);
+      const err = await push(dbA.workingDir, {
+        remoteUrl,
+        connection: { type: 'github', personalAccessToken: 'foo-bar' },
+      }).catch((error) => error);
 
-      expect(err).toBeInstanceOf(Err.HTTPError401AuthorizationRequired);
-      expect(err.message).toMatch(/^HTTP Error: 401 Authorization required: too many redirects or authentication replays/);
+      expect(err).toBeInstanceOf(HTTPError401AuthorizationRequired);
+      expect(err.message).toMatch(
+        /^HTTP Error: 401 Authorization required: too many redirects or authentication replays/
+      );
 
       await destroyDBs([dbA]);
     });
-
-
 
     it('when invalid pair of url and SSH auth', async () => {
       const dbA: GitDocumentDB = new GitDocumentDB({
@@ -373,12 +443,14 @@ maybe('<remote-nodegit> push', () => {
           type: 'ssh',
           publicKeyPath: path.resolve(userHome, '.ssh/invalid-test.pub'),
           privateKeyPath: path.resolve(userHome, '.ssh/invalid-test'),
-          passPhrase: ''
-        }
-      }).catch(err => err);
+          passPhrase: '',
+        },
+      }).catch((error) => error);
 
-      expect(err).toBeInstanceOf(Err.HTTPError401AuthorizationRequired);
-      expect(err.message).toMatch(/^HTTP Error: 401 Authorization required: too many redirects or authentication replays/);
+      expect(err).toBeInstanceOf(HTTPError401AuthorizationRequired);
+      expect(err.message).toMatch(
+        /^HTTP Error: 401 Authorization required: too many redirects or authentication replays/
+      );
 
       await destroyDBs([dbA]);
     });
@@ -396,17 +468,23 @@ maybe('<remote-nodegit> push', () => {
       const repos = await nodegit.Repository.open(dbA.workingDir);
       await getOrCreateGitRemote(repos, remoteUrl, 'origin');
 
-      const err = await push(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token } }).catch(err => err);
-      expect(err).toBeInstanceOf(Err.HTTPError404NotFound);
+      const err = await push(dbA.workingDir, {
+        remoteUrl,
+        connection: { type: 'github', personalAccessToken: token },
+      }).catch((error) => error);
+      expect(err).toBeInstanceOf(HTTPError404NotFound);
       if (process.platform === 'win32') {
-        expect(err.message).toMatch(/^HTTP Error: 404 Not Found: request failed with status code: 404/);
+        expect(err.message).toMatch(
+          /^HTTP Error: 404 Not Found: request failed with status code: 404/
+        );
       }
       else {
-        expect(err.message).toMatch(/^HTTP Error: 404 Not Found: unexpected HTTP status code: 404/);
+        expect(err.message).toMatch(
+          /^HTTP Error: 404 Not Found: unexpected HTTP status code: 404/
+        );
       }
 
       await destroyDBs([dbA]);
-
     });
   });
 
@@ -425,9 +503,14 @@ maybe('<remote-nodegit> push', () => {
     const repos = await nodegit.Repository.open(dbA.workingDir);
     await getOrCreateGitRemote(repos, remoteUrl, 'origin');
 
-    const err = await push(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token } }).catch(err => err);
-    expect(err).toBeInstanceOf(Err.InvalidURLFormatError);
-    expect(err.message).toMatch(/^URL format is invalid: http protocol required in createCredentialForGitHub/);
+    const err = await push(dbA.workingDir, {
+      remoteUrl,
+      connection: { type: 'github', personalAccessToken: token },
+    }).catch((error) => error);
+    expect(err).toBeInstanceOf(InvalidURLFormatError);
+    expect(err.message).toMatch(
+      /^URL format is invalid: http protocol required in createCredentialForGitHub/
+    );
 
     await destroyDBs([dbA]);
   });
@@ -443,7 +526,12 @@ maybe('<remote-nodegit> push', () => {
     const repos = await nodegit.Repository.open(dbA.workingDir);
     await getOrCreateGitRemote(repos, remoteUrl, 'origin');
 
-    await expect(push(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token } })).rejects.toThrowError(Err.InvalidRepositoryURLError);
+    await expect(
+      push(dbA.workingDir, {
+        remoteUrl,
+        connection: { type: 'github', personalAccessToken: token },
+      })
+    ).rejects.toThrowError(InvalidRepositoryURLError);
 
     await destroyDBs([dbA]);
   });
@@ -459,15 +547,17 @@ maybe('<remote-nodegit> push', () => {
     const repos = await nodegit.Repository.open(dbA.workingDir);
     await getOrCreateGitRemote(repos, remoteUrl, 'origin');
 
-    await expect(push(dbA.workingDir, {
-      remoteUrl,
-      connection: {
-        type: 'ssh',
-        publicKeyPath: path.resolve(userHome, 'foo'),
-        privateKeyPath: path.resolve(userHome, 'bar'),
-        passPhrase: ''
-      }
-    })).rejects.toThrowError(Err.InvalidSSHKeyPathError);
+    await expect(
+      push(dbA.workingDir, {
+        remoteUrl,
+        connection: {
+          type: 'ssh',
+          publicKeyPath: path.resolve(userHome, 'foo'),
+          privateKeyPath: path.resolve(userHome, 'bar'),
+          passPhrase: '',
+        },
+      })
+    ).rejects.toThrowError(InvalidSSHKeyPathError);
 
     await destroyDBs([dbA]);
   });
@@ -483,8 +573,10 @@ maybe('<remote-nodegit> push', () => {
     const repos = await nodegit.Repository.open(dbA.workingDir);
     await getOrCreateGitRemote(repos, remoteUrl, 'origin');
 
-    // @ts-ignore
-    await expect(push(dbA.workingDir, { remoteUrl, connection: { type: 'foo' } })).rejects.toThrowError(Err.InvalidAuthenticationTypeError);
+    await expect(
+      // @ts-ignore
+      push(dbA.workingDir, { remoteUrl, connection: { type: 'foo' } })
+    ).rejects.toThrowError(InvalidAuthenticationTypeError);
 
     await destroyDBs([dbA]);
   });
@@ -497,19 +589,26 @@ maybe('<remote-nodegit> push', () => {
       });
       await dbA.open();
 
-      //const remoteUrl = privateRepositoryOfAnotherUser;
+      // const remoteUrl = privateRepositoryOfAnotherUser;
       const remoteUrl = 'https://github.com/sosuisen/git-documentdb.git';
       const repos = await nodegit.Repository.open(dbA.workingDir);
       await getOrCreateGitRemote(repos, remoteUrl, 'origin');
 
-      const err = await push(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token } }).catch(err => err);
-      expect(err).toBeInstanceOf(Err.HTTPError403Forbidden);
+      const err = await push(dbA.workingDir, {
+        remoteUrl,
+        connection: { type: 'github', personalAccessToken: token },
+      }).catch((error) => error);
+      expect(err).toBeInstanceOf(HTTPError403Forbidden);
 
       if (process.platform === 'win32') {
-        expect(err.message).toMatch(/^HTTP Error: 403 Forbidden: request failed with status code: 403/);
+        expect(err.message).toMatch(
+          /^HTTP Error: 403 Forbidden: request failed with status code: 403/
+        );
       }
       else {
-        expect(err.message).toMatch(/^HTTP Error: 403 Forbidden: unexpected HTTP status code: 403/);
+        expect(err.message).toMatch(
+          /^HTTP Error: 403 Forbidden: unexpected HTTP status code: 403/
+        );
       }
 
       await destroyDBs([dbA]);
@@ -518,13 +617,20 @@ maybe('<remote-nodegit> push', () => {
 
   describe('throws UnfetchedCommitExistsError', () => {
     it('when unfetched commit exists', async () => {
-      const [dbA, dbB, syncA, syncB] = await createClonedDatabases(remoteURLBase, localDir, serialId);
+      const [dbA, dbB, syncA, syncB] = await createClonedDatabases(
+        remoteURLBase,
+        localDir,
+        serialId
+      );
 
       await dbB.put({ name: 'foo' });
       await syncB.tryPush();
 
-      const err = await push(dbA.workingDir, { remoteUrl: syncA.remoteURL, connection: { type: 'github', personalAccessToken: token } }).catch(err => err);
-      expect(err).toBeInstanceOf(Err.UnfetchedCommitExistsError);
+      const err = await push(dbA.workingDir, {
+        remoteUrl: syncA.remoteURL,
+        connection: { type: 'github', personalAccessToken: token },
+      }).catch((error) => error);
+      expect(err).toBeInstanceOf(UnfetchedCommitExistsError);
 
       await destroyDBs([dbA, dbB]);
     });
@@ -557,12 +663,18 @@ maybe('<remote-nodegit> push', () => {
       const jsonB1 = { _id: '1', name: 'fromB' };
       await dbB.put(jsonB1);
 
-      await expect(Promise.all([
-        push(dbA.workingDir, { remoteUrl: syncA.remoteURL, connection: { type: 'github', personalAccessToken: token } }),
-        push(dbB.workingDir, { remoteUrl: syncB.remoteURL, connection: { type: 'github', personalAccessToken: token } }),
-      ])).rejects.toThrowError(
-        Err.UnfetchedCommitExistsError
-      );
+      await expect(
+        Promise.all([
+          push(dbA.workingDir, {
+            remoteUrl: syncA.remoteURL,
+            connection: { type: 'github', personalAccessToken: token },
+          }),
+          push(dbB.workingDir, {
+            remoteUrl: syncB.remoteURL,
+            connection: { type: 'github', personalAccessToken: token },
+          }),
+        ])
+      ).rejects.toThrowError(UnfetchedCommitExistsError);
 
       await destroyDBs([dbA, dbB]);
     });

@@ -1,6 +1,6 @@
 {
   "name": "git-documentdb-plugin-remote-nodegit",
-  "version": "1.0.0-beta.1",
+  "version": "1.0.0-beta.2",
   "description": "GitDocumentDB plugin for remote connection using NodeGit",
   "main": "dist/main.js",
   "types": "dist/main.d.ts",
@@ -11,7 +11,8 @@
     "test": "npx nyc npm run mocha \"test/**/*.test.ts\" && npm run rm-test-db",
     "rm-test-db": "rm -rf test/database*",
     "lint": "eslint --fix --ext .ts .",
-    "remove-remote": "node --experimental-modules --experimental-json-modules remove_remote_repositories.mjs"
+    "remove-remote": "node --experimental-modules --experimental-json-modules remove_remote_repositories.mjs",
+    "prepublishOnly": "npm run build"
   },
   "repository": {
     "type": "git",
@@ -31,7 +32,8 @@
   },
   "homepage": "https://gitddb.com/",
   "dependencies": {
-    "@sosuisen/nodegit": "^0.27.3",
+    "git-documentdb-remote-errors": "^1.0.2",
+    "nodegit": "^0.27.0",
     "tslog": "^3.2.0"
   },
   "devDependencies": {
@@ -40,6 +42,7 @@
     "@types/fs-extra": "^9.0.12",
     "@types/mocha": "^8.2.3",
     "@types/node": "^16.3.1",
+    "@types/nodegit": "^0.27.3",
     "@types/sinon": "^10.0.2",
     "@typescript-eslint/eslint-plugin": "^4.28.3",
     "@typescript-eslint/parser": "^4.28.3",
