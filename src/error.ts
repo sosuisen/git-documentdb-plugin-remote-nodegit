@@ -67,15 +67,6 @@ export namespace Err {
   /**
    * @public
    */
-  export class CannotCloneRepositoryError extends BaseError {
-    constructor(mes: unknown) {
-      super(`Cannot clone repository: ${mes}`);
-    }
-  }
-
-  /**
-   * @public
-   */
   export class InvalidRepositoryURLError extends BaseError {
     constructor(url: unknown) {
       super(`Repository URL is invalid: ${url}`);
@@ -108,69 +99,6 @@ export namespace Err {
   export class InvalidURLFormatError extends BaseError {
     constructor(mes: unknown) {
       super(`URL format is invalid: ${mes}`);
-    }
-  }
-
-  /**
-   * @public
-   */
-  export class RequestTimeoutError extends BaseError {
-    constructor(url: unknown) {
-      super(`Request timeout: ${url}`);
-    }
-  }
-
-  /**
-   * @public
-   */
-  export class SocketTimeoutError extends BaseError {
-    constructor(url: unknown) {
-      super(`Socket timeout: ${url}`);
-    }
-  }
-
-  /**
-   * @public
-   */
-  export class HTTPNetworkError extends BaseError {
-    constructor(mes: unknown) {
-      super(`HTTPNetworkError: ${mes}`);
-    }
-  }
-
-  /**
-   * @public
-   */
-  export class PushPermissionDeniedError extends BaseError {
-    constructor(mes: unknown) {
-      super(`Permission denied to push to the repository: ${mes}`);
-    }
-  }
-
-  /**
-   * @public
-   */
-  export class FetchPermissionDeniedError extends BaseError {
-    constructor(mes: unknown) {
-      super(`Permission denied to fetch to the repository: ${mes}`);
-    }
-  }
-
-  /**
-   * @public
-   */
-  export class FetchConnectionFailedError extends BaseError {
-    constructor(mes: unknown) {
-      super(`Fetch connection failed: ${mes}`);
-    }
-  }
-
-  /**
-   * @public
-   */
-  export class PushConnectionFailedError extends BaseError {
-    constructor(mes: unknown) {
-      super(`Push connection failed: ${mes}`);
     }
   }
 

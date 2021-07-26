@@ -36,7 +36,11 @@ export const name = 'nodegit';
 /**
  * Clone
  *
- * @throws {@link Err.CannotCloneRepositoryError}
+ * @throws {@link Err.InvalidURLFormatError}
+ * @throws {@link Err.NetworkError}
+ * @throws {@link Err.HTTPError401AuthorizationRequired}
+ * @throws {@link Err.HTTPError404NotFound}
+ * @throws {@link Err.CannotConnectError}
  *
  * @throws {@link Err.HttpProtocolRequiredError} (from createCredentialForGitHub)
  * @throws {@link Err.InvalidRepositoryURLError} (from createCredentialForGitHub)
@@ -249,7 +253,7 @@ export async function fetch(
   remoteOptions: RemoteOptions,
   remoteName = 'origin',
   logger?: Logger
-) {
+): Promise<void> {
   logger ??= new Logger({
     name: 'plugin-nodegit',
     minLevel: 'trace',

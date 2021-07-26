@@ -7,4 +7,3 @@
  */
 
 export * from './remote-nodegit';
-export * from './error';
