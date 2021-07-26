@@ -6,7 +6,6 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
-import nodegit from '@sosuisen/nodegit';
 import path from 'path';
 import fs from 'fs-extra';
 import { destroyDBs, removeRemoteRepositories } from './remote_utils';
@@ -70,13 +69,11 @@ maybe('<remote-nodegit> clone', () => {
         dbName: serialId(),
         localDir,
       });
-      await dbA.open();
-
       const remoteUrl = remoteURLBase + 'test-public.git';
-
+      fs.ensureDirSync(dbA.workingDir);
       const res = await clone(dbA.workingDir, { remoteUrl, connection: { type: 'github' } }).catch(err => err);
       expect(res).toBeUndefined();
-  
+
       await destroyDBs([dbA]);
     });
 
@@ -85,13 +82,11 @@ maybe('<remote-nodegit> clone', () => {
         dbName: serialId(),
         localDir,
       });
-      await dbA.open();
-
       const remoteUrl = remoteURLBase + 'test-public.git';
-
+      fs.ensureDirSync(dbA.workingDir);
       const res = await clone(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token } }).catch(err => err);
       expect(res).toBeUndefined();
-  
+
       await destroyDBs([dbA]);
     });
 
@@ -100,32 +95,29 @@ maybe('<remote-nodegit> clone', () => {
         dbName: serialId(),
         localDir,
       });
-      await dbA.open();
-
       const remoteUrl = remoteURLBase + 'test-private.git';
-
+      fs.ensureDirSync(dbA.workingDir);
       const res = await clone(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token } }).catch(err => err);
       expect(res).toBeUndefined();
-  
+
       await destroyDBs([dbA]);
     });
   });
 
-  it.only('throws InvalidURLFormat by clone when http protocol is missing', async () => {
+  it('throws InvalidURLFormat by clone when http protocol is missing', async () => {
     const dbA: GitDocumentDB = new GitDocumentDB({
       dbName: serialId(),
       localDir,
     });
+    const remoteUrl = 'foo-bar';
+    fs.ensureDirSync(dbA.workingDir);
+    const err = await clone(dbA.workingDir, { remoteUrl }).catch(err => err);
     await dbA.open();
 
-    const remoteUrl = 'foo-bar';
-
-    const err = await clone(dbA.workingDir, { remoteUrl }).catch(err => err);
-
-//    expect(err).toBeInstanceOf(Err.InvalidURLFormatError);
+    expect(err).toBeInstanceOf(Err.InvalidURLFormatError);
     expect(err.message).toMatch(/^URL format is invalid: unsupported URL protocol/);
 
-    //await destroyDBs([dbA]);
+    await destroyDBs([dbA]);
   });
 
   it('throws InvalidURLFormatError by clone when URL is malformed', async () => {
@@ -133,10 +125,8 @@ maybe('<remote-nodegit> clone', () => {
       dbName: serialId(),
       localDir,
     });
-    await dbA.open();
-
     const remoteUrl = 'https://foo.example.com:xxxx';
-
+    fs.ensureDirSync(dbA.workingDir);
     const err = await clone(dbA.workingDir, { remoteUrl }).catch(err => err);
     expect(err).toBeInstanceOf(Err.InvalidURLFormatError);
     expect(err.message).toMatch(/^URL format is invalid: malformed URL/);
@@ -144,47 +134,58 @@ maybe('<remote-nodegit> clone', () => {
     await destroyDBs([dbA]);
   });
 
-  it('throws NetworkError when HTTP host is invalid', async () => {
-    const dbA: GitDocumentDB = new GitDocumentDB({
-      dbName: serialId(),
-      localDir,
+  describe('throws NetworkError', () => {
+    it('when HTTP host is invalid', async () => {
+      const dbA: GitDocumentDB = new GitDocumentDB({
+        dbName: serialId(),
+        localDir,
+      });
+      const remoteUrl = 'https://foo.bar.example.com/gitddb-plugin/sync-test-invalid.git';
+      fs.ensureDirSync(dbA.workingDir);
+      const err = await clone(dbA.workingDir, { remoteUrl }).catch(err => err);
+      expect(err).toBeInstanceOf(Err.NetworkError);
+      expect(err.message).toMatch(/^Network error: failed to send request/);
+
+      await destroyDBs([dbA]);
     });
-    await dbA.open();
 
-    const remoteUrl = 'https://foo.bar.example.com/gitddb-plugin/sync-test-invalid.git';
+    it('when IP address is invalid', async () => {
+      const dbA: GitDocumentDB = new GitDocumentDB({
+        dbName: serialId(),
+        localDir,
+      });
+      const remoteUrl = 'https://foo.bar.example.com/gitddb-plugin/sync-test-invalid.git';
+      fs.ensureDirSync(dbA.workingDir);
+      const err = await clone(dbA.workingDir, { remoteUrl }).catch(err => err);
+      expect(err).toBeInstanceOf(Err.NetworkError);
+      expect(err.message).toMatch(/^Network error: failed to send request/);
 
-    const err = await clone(dbA.workingDir, { remoteUrl }).catch(err => err);
-    expect(err).toBeInstanceOf(Err.NetworkError);
-    expect(err.message).toMatch(/^Network error: failed to send request/);
-
-    await destroyDBs([dbA]);
-  });
-
-  it('throws NetworkError when SSH host is invalid', async () => {
-    const dbA: GitDocumentDB = new GitDocumentDB({
-      dbName: serialId(),
-      localDir,
+      await destroyDBs([dbA]);
     });
-    await dbA.open();
 
-    const remoteUrl = 'git@foo.example.com:bar/sync-test.git';
+    it('when SSH host is invalid', async () => {
+      const dbA: GitDocumentDB = new GitDocumentDB({
+        dbName: serialId(),
+        localDir,
+      });
+      const remoteUrl = 'git@foo.example.com:bar/sync-test.git';
+      fs.ensureDirSync(dbA.workingDir);
+      const err = await clone(dbA.workingDir, {
+        remoteUrl,
+        connection: {
+          type: 'ssh',
+          publicKeyPath: path.resolve(userHome, '.ssh/invalid-test.pub'),
+          privateKeyPath: path.resolve(userHome, '.ssh/invalid-test'),
+          passPhrase: ''
+        }
+      }).catch(err => err);
 
-    const err = await clone(dbA.workingDir, {
-      remoteUrl,
-      connection: {
-        type: 'ssh',
-        publicKeyPath: path.resolve(userHome, '.ssh/invalid-test.pub'),
-        privateKeyPath: path.resolve(userHome, '.ssh/invalid-test'),
-        passPhrase: ''
-      }
-    }).catch(err => err);
+      expect(err).toBeInstanceOf(Err.NetworkError);
+      expect(err.message).toMatch(/^Network error: failed to resolve address/);
 
-    expect(err).toBeInstanceOf(Err.NetworkError);
-    expect(err.message).toMatch(/^Network error: failed to resolve address/);
-
-    await destroyDBs([dbA]);
+      await destroyDBs([dbA]);
+    });
   });
-
 
   describe('throws HttpError401AuthorizationRequired', () => {
     it('when personal access token does not exist', async () => {
@@ -192,12 +193,10 @@ maybe('<remote-nodegit> clone', () => {
         dbName: serialId(),
         localDir,
       });
-      await dbA.open();
-  
       const remoteUrl = remoteURLBase + 'test-private.git';
-
+      fs.ensureDirSync(dbA.workingDir);
       const err = await clone(dbA.workingDir, { remoteUrl, connection: { type: 'github' } }).catch(err => err);
-  
+
       expect(err).toBeInstanceOf(Err.HTTPError401AuthorizationRequired);
       expect(err.message).toMatch(/^HTTP Error: 401 Authorization required: request failed with status code: 401/);
 
@@ -209,10 +208,8 @@ maybe('<remote-nodegit> clone', () => {
         dbName: serialId(),
         localDir,
       });
-      await dbA.open();
-
       const remoteUrl = remoteURLBase + 'test-private.git';
-
+      fs.ensureDirSync(dbA.workingDir);
       let err;
       for (let i = 0; i < 3; i++) {
         err = await clone(dbA.workingDir, { remoteUrl }).catch(err => err);
@@ -238,10 +235,8 @@ maybe('<remote-nodegit> clone', () => {
         dbName: serialId(),
         localDir,
       });
-      await dbA.open();
-
       const remoteUrl = remoteURLBase + 'test-private.git';
-
+      fs.ensureDirSync(dbA.workingDir);
       const err = await clone(dbA.workingDir, { remoteUrl }).catch(err => err);
       expect(err).toBeInstanceOf(Err.HTTPError401AuthorizationRequired);
       expect(err.message).toMatch(/^HTTP Error: 401 Authorization required: remote credential provider returned an invalid cred type/);
@@ -254,11 +249,9 @@ maybe('<remote-nodegit> clone', () => {
         dbName: serialId(),
         localDir,
       });
-      await dbA.open();
-
       // TODO: set SSH url for test
       const remoteUrl = 'git@github.com:xxxxxxxxxxxxxxxxxx/sync-test.git';
-
+      fs.ensureDirSync(dbA.workingDir);
       const err = await clone(dbA.workingDir, {
         remoteUrl,
         connection: {
@@ -281,10 +274,8 @@ maybe('<remote-nodegit> clone', () => {
         dbName: serialId(),
         localDir,
       });
-      await dbA.open();
-  
       const remoteUrl = remoteURLBase + 'test-private.git';
-
+      fs.ensureDirSync(dbA.workingDir);
       const err = await clone(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: 'foo-bar' } }).catch(err => err);
 
       expect(err).toBeInstanceOf(Err.HTTPError401AuthorizationRequired);
@@ -292,18 +283,16 @@ maybe('<remote-nodegit> clone', () => {
 
       await destroyDBs([dbA]);
     });
-  
-  
+
+
 
     it('when invalid pair of url and SSH auth', async () => {
       const dbA: GitDocumentDB = new GitDocumentDB({
         dbName: serialId(),
         localDir,
       });
-      await dbA.open();
-
       const remoteUrl = remoteURLBase + 'test-private.git';
-
+      fs.ensureDirSync(dbA.workingDir);
       const err = await clone(dbA.workingDir, {
         remoteUrl,
         connection: {
@@ -327,10 +316,8 @@ maybe('<remote-nodegit> clone', () => {
         dbName: serialId(),
         localDir,
       });
-      await dbA.open();
-
       const remoteUrl = remoteURLBase + 'sync-test-invalid.git';
-
+      fs.ensureDirSync(dbA.workingDir);
       const err = await clone(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token } }).catch(err => err);
       expect(err).toBeInstanceOf(Err.HTTPError404NotFound);
       if (process.platform === 'win32') {
@@ -339,7 +326,7 @@ maybe('<remote-nodegit> clone', () => {
       else {
         expect(err.message).toMatch(/^HTTP Error: 404 Not Found: unexpected HTTP status code: 404/);
       }
-  
+
       await destroyDBs([dbA]);
 
     });
@@ -354,10 +341,8 @@ maybe('<remote-nodegit> clone', () => {
       dbName: serialId(),
       localDir,
     });
-    await dbA.open();
-
     const remoteUrl = 'foo-bar';
-
+    fs.ensureDirSync(dbA.workingDir);
     const err = await clone(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token } }).catch(err => err);
     expect(err).toBeInstanceOf(Err.InvalidURLFormatError);
     expect(err.message).toMatch(/^URL format is invalid: http protocol required in createCredentialForGitHub/);
@@ -370,10 +355,8 @@ maybe('<remote-nodegit> clone', () => {
       dbName: serialId(),
       localDir,
     });
-    await dbA.open();
-
     const remoteUrl = remoteURLBase + 'foo/bar/test.git';
-
+    fs.ensureDirSync(dbA.workingDir);
     await expect(clone(dbA.workingDir, { remoteUrl, connection: { type: 'github', personalAccessToken: token } })).rejects.toThrowError(Err.InvalidRepositoryURLError);
 
     await destroyDBs([dbA]);
@@ -384,10 +367,8 @@ maybe('<remote-nodegit> clone', () => {
       dbName: serialId(),
       localDir,
     });
-    await dbA.open();
-
     const remoteUrl = 'git@github.com:xxxxxxxxxxxxxxxxxx/sync-test.git';
-
+    fs.ensureDirSync(dbA.workingDir);
     await expect(clone(dbA.workingDir, {
       remoteUrl,
       connection: {
@@ -406,10 +387,8 @@ maybe('<remote-nodegit> clone', () => {
       dbName: serialId(),
       localDir,
     });
-    await dbA.open();
-
     const remoteUrl = remoteURLBase + 'test-private.git';
-
+    fs.ensureDirSync(dbA.workingDir);
     // @ts-ignore
     await expect(clone(dbA.workingDir, { remoteUrl, connection: { type: 'foo' } })).rejects.toThrowError(Err.InvalidAuthenticationTypeError);
 

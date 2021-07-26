@@ -10,7 +10,7 @@ import nodegit from '@sosuisen/nodegit';
 import path from 'path';
 import fs from 'fs-extra';
 import { createClonedDatabases, destroyDBs, removeRemoteRepositories } from './remote_utils';
-import { clone, fetch, getOrCreateGitRemote, push } from '../src/remote-nodegit';
+import { clone, getOrCreateGitRemote, push } from '../src/remote-nodegit';
 import expect from 'expect';
 import { Err } from '../src/error';
 import { GitDocumentDB, RemoteOptions } from 'git-documentdb';
