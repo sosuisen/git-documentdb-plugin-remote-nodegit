@@ -28,6 +28,7 @@ import { clone, push } from '../src/remote-nodegit';
 import {
   createClonedDatabases,
   createGitRemote,
+  createRemoteRepository,
   destroyDBs,
   removeRemoteRepositories,
 } from './remote_utils';
@@ -109,7 +110,26 @@ maybe('<remote-nodegit> push', () => {
   });
 
   describe('succeeds', () => {
-    it('when connect to public repository with valid personal access token', async () => {
+    it('when connect to empty repository with valid personal access token', async () => {
+      const dbA: GitDocumentDB = new GitDocumentDB({
+        dbName: serialId(),
+        localDir,
+      });
+      const remoteUrl = remoteURLBase + serialId();
+      await dbA.open();
+      await createRemoteRepository(remoteUrl);
+      await createGitRemote(dbA.workingDir, remoteUrl);
+      const res = await push(dbA.workingDir, {
+        remoteUrl,
+        connection: { type: 'github', personalAccessToken: token },
+      }).catch((error) => error);
+
+      expect(res).toBeUndefined();
+
+      await destroyDBs([dbA]);
+    });
+
+    it('when connect to cloned repository with valid personal access token', async () => {
       const dbA: GitDocumentDB = new GitDocumentDB({
         dbName: serialId(),
         localDir,
@@ -121,12 +141,13 @@ maybe('<remote-nodegit> push', () => {
         connection: { type: 'github', personalAccessToken: token },
       });
       await dbA.open();
-      await createGitRemote(dbA.workingDir, remoteUrl);
+      // await createGitRemote(dbA.workingDir, remoteUrl); // Not need because cloned repository.
 
       const res = await push(dbA.workingDir, {
         remoteUrl,
         connection: { type: 'github', personalAccessToken: token },
       }).catch((error) => error);
+
       expect(res).toBeUndefined();
 
       await destroyDBs([dbA]);
