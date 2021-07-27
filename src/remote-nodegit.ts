@@ -124,37 +124,9 @@ export async function clone(
 type GitRemoteAction = 'add' | 'change' | 'exist';
 
 /**
- * Get or create Git remote named 'origin'
- *
- * (git remote add)
- */
-// eslint-disable-next-line complexity
-export async function getOrCreateGitRemote(
-  repos: nodegit.Repository,
-  remoteURL: string,
-  remoteName: string
-): Promise<[GitRemoteAction, nodegit.Remote]> {
-  let result: GitRemoteAction;
-  // Check if remote repository already exists
-  let remote = await nodegit.Remote.lookup(repos, remoteName).catch(() => {});
-  if (remote === undefined) {
-    // Add remote repository
-    remote = await nodegit.Remote.create(repos, remoteName, remoteURL);
-    result = 'add';
-  }
-  else if (remote.url() !== remoteURL) {
-    nodegit.Remote.setUrl(repos, remoteName, remoteURL);
-    result = 'change';
-  }
-  else {
-    result = 'exist';
-  }
-  return [result, remote];
-}
-
-/**
  * Check connection by FETCH
  *
+ * @throws {@link InvalidGitRemoteError}
  * @throws {@link InvalidURLFormatError}
  * @throws {@link NetworkError}
  * @throws {@link HTTPError401AuthorizationRequired}
@@ -186,12 +158,10 @@ export async function checkFetch(
   const callbacks = createCredentialCallback(options);
   const repos = await nodegit.Repository.open(workingDir);
   // Get NodeGit.Remote
-  const [gitResult, remote] = await getOrCreateGitRemote(
-    repos,
-    options.remoteUrl!,
-    remoteName
-  );
-  logger.debug('Git remote: ' + gitResult);
+  const remote = await nodegit.Remote.lookup(repos, remoteName).catch(() => {});
+  if (remote === undefined) {
+    throw new InvalidGitRemoteError(`remote '${remoteName}' does not exist`);
+  }
 
   const error = String(
     await remote
@@ -375,8 +345,8 @@ export async function push(
   workingDir: string,
   remoteOptions: RemoteOptions,
   remoteName = 'origin',
-  localBranch = 'refs/heads/main',
-  remoteBranch = 'refs/heads/main',
+  localBranchName = 'main',
+  remoteBranchName = 'main',
   logger?: Logger
 ): Promise<void> {
   logger ??= new Logger({
@@ -399,6 +369,9 @@ export async function push(
       throw err;
     });
   const callbacks = createCredentialCallback(remoteOptions);
+
+  const localBranch = 'refs/heads/' + localBranchName;
+  const remoteBranch = 'refs/heads/' + remoteBranchName;
 
   const res = await remote
     .push([`${localBranch}:${remoteBranch}`], {
@@ -464,7 +437,13 @@ export async function push(
       throw new CannotConnectError(error);
   }
 
-  await validatePushResult(repos, workingDir, callbacks);
+  await validatePushResult(
+    repos,
+    workingDir,
+    remoteName,
+    remoteBranchName,
+    callbacks
+  );
 }
 
 /**
@@ -478,10 +457,12 @@ export async function push(
 async function validatePushResult(
   repos: nodegit.Repository,
   workingDir: string,
+  remoteName: string,
+  remoteBranchName: string,
   callbacks: RemoteCallbacks
 ): Promise<void> {
   await repos
-    .fetch('origin', {
+    .fetch(remoteName, {
       callbacks,
     })
     .catch((err) => {
@@ -502,7 +483,7 @@ async function validatePushResult(
   const remoteCommitOid = await git.resolveRef({
     fs,
     dir: workingDir,
-    ref: 'refs/remotes/origin/main',
+    ref: `refs/remotes/${remoteName}/${remoteBranchName}`,
   });
 
   const [baseCommitOid] = await git.findMergeBase({

@@ -22,8 +22,12 @@ import {
   NetworkError,
 } from 'git-documentdb-remote-errors';
 import { GitDocumentDB } from 'git-documentdb';
-import { fetch, getOrCreateGitRemote } from '../src/remote-nodegit';
-import { destroyDBs, removeRemoteRepositories } from './remote_utils';
+import { fetch } from '../src/remote-nodegit';
+import {
+  createGitRemote,
+  destroyDBs,
+  removeRemoteRepositories,
+} from './remote_utils';
 
 const reposPrefix = 'test_remote_nodegit_fetch___';
 const localDir = `./test/database_fetch`;
@@ -85,9 +89,6 @@ maybe('<remote-nodegit> fetch', () => {
     await dbA.open();
 
     const remoteUrl = 'foo-bar';
-    const repos = await nodegit.Repository.open(dbA.workingDir);
-    // await getOrCreateGitRemote(repos, remoteUrl, 'origin');
-
     const err = await fetch(dbA.workingDir, { remoteUrl }).catch(
       (error) => error
     );
@@ -109,9 +110,7 @@ maybe('<remote-nodegit> fetch', () => {
       await dbA.open();
 
       const remoteUrl = remoteURLBase + 'test-public.git';
-      const repos = await nodegit.Repository.open(dbA.workingDir);
-      await getOrCreateGitRemote(repos, remoteUrl, 'origin');
-
+      await createGitRemote(dbA.workingDir, remoteUrl);
       const res = await fetch(dbA.workingDir, {
         remoteUrl,
         connection: { type: 'github' },
@@ -129,9 +128,8 @@ maybe('<remote-nodegit> fetch', () => {
       await dbA.open();
 
       const remoteUrl = remoteURLBase + 'test-public.git';
-      const repos = await nodegit.Repository.open(dbA.workingDir);
-      await getOrCreateGitRemote(repos, remoteUrl, 'origin');
 
+      await createGitRemote(dbA.workingDir, remoteUrl);
       const res = await fetch(dbA.workingDir, {
         remoteUrl,
         connection: { type: 'github', personalAccessToken: token },
@@ -149,8 +147,7 @@ maybe('<remote-nodegit> fetch', () => {
       await dbA.open();
 
       const remoteUrl = remoteURLBase + 'test-private.git';
-      const repos = await nodegit.Repository.open(dbA.workingDir);
-      await getOrCreateGitRemote(repos, remoteUrl, 'origin');
+      await createGitRemote(dbA.workingDir, remoteUrl);
 
       const res = await fetch(dbA.workingDir, {
         remoteUrl,
@@ -170,8 +167,7 @@ maybe('<remote-nodegit> fetch', () => {
     await dbA.open();
 
     const remoteUrl = 'foo-bar';
-    const repos = await nodegit.Repository.open(dbA.workingDir);
-    await getOrCreateGitRemote(repos, remoteUrl, 'origin');
+    await createGitRemote(dbA.workingDir, remoteUrl);
 
     const err = await fetch(dbA.workingDir, { remoteUrl }).catch(
       (error) => error
@@ -193,8 +189,7 @@ maybe('<remote-nodegit> fetch', () => {
     await dbA.open();
 
     const remoteUrl = 'https://foo.example.com:xxxx';
-    const repos = await nodegit.Repository.open(dbA.workingDir);
-    await getOrCreateGitRemote(repos, remoteUrl, 'origin');
+    await createGitRemote(dbA.workingDir, remoteUrl);
 
     const err = await fetch(dbA.workingDir, { remoteUrl }).catch(
       (error) => error
@@ -216,8 +211,7 @@ maybe('<remote-nodegit> fetch', () => {
       const remoteUrl =
         'https://foo.bar.example.com/gitddb-plugin/sync-test-invalid.git';
 
-      const repos = await nodegit.Repository.open(dbA.workingDir);
-      await getOrCreateGitRemote(repos, remoteUrl, 'origin');
+      await createGitRemote(dbA.workingDir, remoteUrl);
 
       const err = await fetch(dbA.workingDir, { remoteUrl }).catch(
         (error) => error
@@ -236,8 +230,7 @@ maybe('<remote-nodegit> fetch', () => {
       await dbA.open();
 
       const remoteUrl = 'https://127.0.0.1/gitddb-plugin/sync-test-invalid.git';
-      const repos = await nodegit.Repository.open(dbA.workingDir);
-      await getOrCreateGitRemote(repos, remoteUrl, 'origin');
+      await createGitRemote(dbA.workingDir, remoteUrl);
 
       const err = await fetch(dbA.workingDir, {
         remoteUrl,
@@ -260,8 +253,7 @@ maybe('<remote-nodegit> fetch', () => {
       await dbA.open();
 
       const remoteUrl = 'git@foo.example.com:bar/sync-test.git';
-      const repos = await nodegit.Repository.open(dbA.workingDir);
-      await getOrCreateGitRemote(repos, remoteUrl, 'origin');
+      await createGitRemote(dbA.workingDir, remoteUrl);
 
       const err = await fetch(dbA.workingDir, {
         remoteUrl,
@@ -289,8 +281,8 @@ maybe('<remote-nodegit> fetch', () => {
       await dbA.open();
 
       const remoteUrl = remoteURLBase + 'test-private.git';
-      const repos = await nodegit.Repository.open(dbA.workingDir);
-      await getOrCreateGitRemote(repos, remoteUrl, 'origin');
+
+      await createGitRemote(dbA.workingDir, remoteUrl);
 
       const err = await fetch(dbA.workingDir, {
         remoteUrl,
@@ -313,8 +305,7 @@ maybe('<remote-nodegit> fetch', () => {
       await dbA.open();
 
       const remoteUrl = remoteURLBase + 'test-private.git';
-      const repos = await nodegit.Repository.open(dbA.workingDir);
-      await getOrCreateGitRemote(repos, remoteUrl, 'origin');
+      await createGitRemote(dbA.workingDir, remoteUrl);
 
       let err;
       for (let i = 0; i < 3; i++) {
@@ -354,8 +345,8 @@ maybe('<remote-nodegit> fetch', () => {
       await dbA.open();
 
       const remoteUrl = remoteURLBase + 'test-private.git';
-      const repos = await nodegit.Repository.open(dbA.workingDir);
-      await getOrCreateGitRemote(repos, remoteUrl, 'origin');
+
+      await createGitRemote(dbA.workingDir, remoteUrl);
 
       const err = await fetch(dbA.workingDir, { remoteUrl }).catch(
         (error) => error
@@ -377,8 +368,8 @@ maybe('<remote-nodegit> fetch', () => {
 
       // TODO: set SSH url for test
       const remoteUrl = 'git@github.com:xxxxxxxxxxxxxxxxxx/sync-test.git';
-      const repos = await nodegit.Repository.open(dbA.workingDir);
-      await getOrCreateGitRemote(repos, remoteUrl, 'origin');
+
+      await createGitRemote(dbA.workingDir, remoteUrl);
 
       const err = await fetch(dbA.workingDir, {
         remoteUrl,
@@ -407,8 +398,7 @@ maybe('<remote-nodegit> fetch', () => {
       await dbA.open();
 
       const remoteUrl = remoteURLBase + 'test-private.git';
-      const repos = await nodegit.Repository.open(dbA.workingDir);
-      await getOrCreateGitRemote(repos, remoteUrl, 'origin');
+      await createGitRemote(dbA.workingDir, remoteUrl);
 
       const err = await fetch(dbA.workingDir, {
         remoteUrl,
@@ -431,8 +421,7 @@ maybe('<remote-nodegit> fetch', () => {
       await dbA.open();
 
       const remoteUrl = remoteURLBase + 'test-private.git';
-      const repos = await nodegit.Repository.open(dbA.workingDir);
-      await getOrCreateGitRemote(repos, remoteUrl, 'origin');
+      await createGitRemote(dbA.workingDir, remoteUrl);
 
       const err = await fetch(dbA.workingDir, {
         remoteUrl,
@@ -462,8 +451,7 @@ maybe('<remote-nodegit> fetch', () => {
       await dbA.open();
 
       const remoteUrl = remoteURLBase + 'sync-test-invalid.git';
-      const repos = await nodegit.Repository.open(dbA.workingDir);
-      await getOrCreateGitRemote(repos, remoteUrl, 'origin');
+      await createGitRemote(dbA.workingDir, remoteUrl);
 
       const err = await fetch(dbA.workingDir, {
         remoteUrl,
@@ -497,8 +485,7 @@ maybe('<remote-nodegit> fetch', () => {
     await dbA.open();
 
     const remoteUrl = 'foo-bar';
-    const repos = await nodegit.Repository.open(dbA.workingDir);
-    await getOrCreateGitRemote(repos, remoteUrl, 'origin');
+    await createGitRemote(dbA.workingDir, remoteUrl);
 
     const err = await fetch(dbA.workingDir, {
       remoteUrl,
@@ -520,8 +507,7 @@ maybe('<remote-nodegit> fetch', () => {
     await dbA.open();
 
     const remoteUrl = remoteURLBase + 'foo/bar/test.git';
-    const repos = await nodegit.Repository.open(dbA.workingDir);
-    await getOrCreateGitRemote(repos, remoteUrl, 'origin');
+    await createGitRemote(dbA.workingDir, remoteUrl);
 
     await expect(
       fetch(dbA.workingDir, {
@@ -541,8 +527,7 @@ maybe('<remote-nodegit> fetch', () => {
     await dbA.open();
 
     const remoteUrl = 'git@github.com:xxxxxxxxxxxxxxxxxx/sync-test.git';
-    const repos = await nodegit.Repository.open(dbA.workingDir);
-    await getOrCreateGitRemote(repos, remoteUrl, 'origin');
+    await createGitRemote(dbA.workingDir, remoteUrl);
 
     await expect(
       fetch(dbA.workingDir, {
@@ -567,8 +552,7 @@ maybe('<remote-nodegit> fetch', () => {
     await dbA.open();
 
     const remoteUrl = remoteURLBase + 'test-private.git';
-    const repos = await nodegit.Repository.open(dbA.workingDir);
-    await getOrCreateGitRemote(repos, remoteUrl, 'origin');
+    await createGitRemote(dbA.workingDir, remoteUrl);
 
     await expect(
       // @ts-ignore

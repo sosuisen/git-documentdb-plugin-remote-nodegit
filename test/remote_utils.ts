@@ -6,6 +6,8 @@
  * This source code is licensed under the Mozilla Public License Version 2.0
  * found in the LICENSE file in the root directory of this source tree.
  */
+
+import fs from 'fs';
 import { Octokit } from '@octokit/rest';
 import {
   FILE_REMOVE_TIMEOUT,
@@ -16,8 +18,22 @@ import {
   SyncInterface,
 } from 'git-documentdb';
 import sinon from 'sinon';
+import git from 'isomorphic-git';
 
 const token = process.env.GITDDB_PERSONAL_ACCESS_TOKEN!;
+
+export async function createGitRemote(
+  localDir: string,
+  remoteUrl: string,
+  remoteName = 'origin'
+) {
+  await git.setConfig({
+    fs,
+    dir: localDir,
+    path: `remote.${remoteName}.url`,
+    value: remoteUrl,
+  });
+}
 
 export async function createDatabase(
   remoteURLBase: string,
