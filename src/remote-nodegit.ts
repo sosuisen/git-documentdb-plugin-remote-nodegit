@@ -61,6 +61,7 @@ export const name = 'nodegit';
 export async function clone(
   workingDir: string,
   remoteOptions: RemoteOptions,
+  remoteName = 'origin',
   logger?: Logger
 ): Promise<void> {
   logger ??= new Logger({
@@ -115,6 +116,25 @@ export async function clone(
 
     default:
       throw new CannotConnectError(error);
+  }
+
+  // Rewrite remote
+
+  // default is 'origin'
+  if (remoteName !== 'origin') {
+    // Add remote
+    await git.setConfig({
+      fs,
+      dir: workingDir,
+      path: `remote.${remoteName}.url`,
+      value: remoteOptions.remoteUrl!,
+    });
+    await git.setConfig({
+      fs,
+      dir: workingDir,
+      path: `remote.${remoteName}.fetch`,
+      value: `+refs/heads/*:refs/remotes/${remoteName}/*`,
+    });
   }
 }
 

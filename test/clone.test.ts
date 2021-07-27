@@ -20,6 +20,7 @@ import {
   NetworkError,
 } from 'git-documentdb-remote-errors';
 import { GitDocumentDB } from 'git-documentdb';
+import git from 'isomorphic-git';
 import { clone } from '../src/remote-nodegit';
 import { destroyDBs, removeRemoteRepositories } from './remote_utils';
 
@@ -118,6 +119,40 @@ maybe('<remote-nodegit> clone', () => {
         connection: { type: 'github', personalAccessToken: token },
       }).catch((error) => error);
       expect(res).toBeUndefined();
+
+      await destroyDBs([dbA]);
+    });
+
+    it('set another remote name', async () => {
+      const dbA: GitDocumentDB = new GitDocumentDB({
+        dbName: serialId(),
+        localDir,
+      });
+      const remoteUrl = remoteURLBase + 'test-public.git';
+      fs.ensureDirSync(dbA.workingDir);
+      const res = await clone(
+        dbA.workingDir,
+        {
+          remoteUrl,
+          connection: { type: 'github' },
+        },
+        'another'
+      ).catch((error) => error);
+      expect(res).toBeUndefined();
+
+      const url = await git.getConfig({
+        fs,
+        dir: dbA.workingDir,
+        path: 'remote.another.url',
+      });
+      expect(url).toBe(remoteUrl);
+
+      const fetch = await git.getConfig({
+        fs,
+        dir: dbA.workingDir,
+        path: 'remote.another.fetch',
+      });
+      expect(fetch).toBe(`+refs/heads/*:refs/remotes/another/*`);
 
       await destroyDBs([dbA]);
     });
