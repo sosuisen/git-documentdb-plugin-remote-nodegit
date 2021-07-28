@@ -65,4 +65,8 @@ export type RemoteOptions = {
   remoteUrl?: string;
   syncDirection?: SyncDirection;
   connection?: ConnectionSettings;
+
+  /* automation */
+  retry?: number;
+  retryInterval?: number; // msec
 };

@@ -73,49 +73,63 @@ export async function clone(
   });
   logger.debug(`remote-nodegit: clone: ${remoteOptions.remoteUrl}`);
 
-  const res = await nodegit.Clone.clone(remoteOptions.remoteUrl!, workingDir, {
-    fetchOpts: {
-      callbacks: createCredentialCallback(remoteOptions),
-    },
-  }).catch((err) => err);
+  for (let i = 0; i < remoteOptions.retry! + 1; i++) {
+    // eslint-disable-next-line no-await-in-loop
+    const res = await nodegit.Clone.clone(
+      remoteOptions.remoteUrl!,
+      workingDir,
+      {
+        fetchOpts: {
+          callbacks: createCredentialCallback(remoteOptions),
+        },
+      }
+    ).catch((err) => err);
 
-  let error = '';
-  if (res instanceof Error) {
-    error = res.message;
-  }
+    let error = '';
+    if (res instanceof Error) {
+      error = res.message;
+    }
 
-  // if (error !== 'undefined') console.warn('connect fetch error: ' + error);
-  switch (true) {
-    case error === '':
-      break;
+    // if (error !== 'undefined') console.warn('connect fetch error: ' + error);
+    switch (true) {
+      case error === '':
+        break;
 
-    case error.startsWith('unsupported URL protocol'):
-    case error.startsWith('malformed URL'):
-      throw new InvalidURLFormatError(error);
+      case error.startsWith('unsupported URL protocol'):
+      case error.startsWith('malformed URL'):
+        throw new InvalidURLFormatError(error);
 
-    // NodeGit throws them when network is limited.
-    case error.startsWith('failed to send request'):
-    case error.startsWith('failed to resolve address'):
-      throw new NetworkError(error);
+      // NodeGit throws them when network is limited.
+      case error.startsWith('failed to send request'):
+      case error.startsWith('failed to resolve address'):
+        if (i >= remoteOptions.retry!) {
+          throw new NetworkError(error);
+        }
+        break;
 
-    case error.startsWith('unexpected HTTP status code: 401'): // 401 on Ubuntu
-    case error.startsWith('request failed with status code: 401'): // 401 on Windows
-    case error.startsWith('Method connect has thrown an error'):
-    case error.startsWith(
-      'remote credential provider returned an invalid cred type'
-    ): // on Ubuntu
-    case error.startsWith(
-      'Failed to retrieve list of SSH authentication methods'
-    ):
-    case error.startsWith('too many redirects or authentication replays'):
-      throw new HTTPError401AuthorizationRequired(error);
+      case error.startsWith('unexpected HTTP status code: 401'): // 401 on Ubuntu
+      case error.startsWith('request failed with status code: 401'): // 401 on Windows
+      case error.startsWith('Method connect has thrown an error'):
+      case error.startsWith(
+        'remote credential provider returned an invalid cred type'
+      ): // on Ubuntu
+      case error.startsWith(
+        'Failed to retrieve list of SSH authentication methods'
+      ):
+      case error.startsWith('too many redirects or authentication replays'):
+        throw new HTTPError401AuthorizationRequired(error);
 
-    case error.startsWith('unexpected HTTP status code: 404'): // 404 on Ubuntu
-    case error.startsWith('request failed with status code: 404'): // 404 on Windows
-      throw new HTTPError404NotFound(error);
+      case error.startsWith('unexpected HTTP status code: 404'): // 404 on Ubuntu
+      case error.startsWith('request failed with status code: 404'): // 404 on Windows
+        throw new HTTPError404NotFound(error);
 
-    default:
-      throw new CannotConnectError(error);
+      default:
+        if (i >= remoteOptions.retry!) {
+          throw new CannotConnectError(error);
+        }
+    }
+    // eslint-disable-next-line no-await-in-loop
+    await sleep(remoteOptions.retryInterval!);
   }
 
   // Rewrite remote
@@ -164,7 +178,7 @@ type GitRemoteAction = 'add' | 'change' | 'exist';
 // eslint-disable-next-line complexity
 export async function checkFetch(
   workingDir: string,
-  options: RemoteOptions,
+  remoteOptions: RemoteOptions,
   remoteName = 'origin',
   logger?: Logger
 ): Promise<boolean> {
@@ -175,7 +189,7 @@ export async function checkFetch(
     displayFunctionName: false,
     displayFilePath: 'hidden',
   });
-  const callbacks = createCredentialCallback(options);
+  const callbacks = createCredentialCallback(remoteOptions);
   const repos = await nodegit.Repository.open(workingDir);
   // Get NodeGit.Remote
   const remote = await nodegit.Remote.lookup(repos, remoteName).catch(() => {});
@@ -183,46 +197,57 @@ export async function checkFetch(
     throw new InvalidGitRemoteError(`remote '${remoteName}' does not exist`);
   }
 
-  const error = String(
-    await remote
-      .connect(nodegit.Enums.DIRECTION.FETCH, callbacks)
-      .catch((err) => err)
-  );
-  await remote.disconnect();
+  for (let i = 0; i < remoteOptions.retry! + 1; i++) {
+    const error = String(
+      // eslint-disable-next-line no-await-in-loop
+      await remote
+        .connect(nodegit.Enums.DIRECTION.FETCH, callbacks)
+        .catch((err) => err)
+    );
+    // eslint-disable-next-line no-await-in-loop
+    await remote.disconnect();
 
-  // if (error !== 'undefined') console.warn('connect fetch error: ' + error);
-  switch (true) {
-    case error === 'undefined':
-      break;
-    case error.startsWith('Error: unsupported URL protocol'):
-    case error.startsWith('Error: malformed URL'):
-      throw new InvalidURLFormatError(error);
+    // if (error !== 'undefined') console.warn('connect fetch error: ' + error);
+    switch (true) {
+      case error === 'undefined':
+        break;
+      case error.startsWith('Error: unsupported URL protocol'):
+      case error.startsWith('Error: malformed URL'):
+        throw new InvalidURLFormatError(error);
 
-    // NodeGit throws them when network is limited.
-    case error.startsWith('Error: failed to send request'):
-    case error.startsWith('Error: failed to resolve address'):
-      throw new NetworkError(error);
+      // NodeGit throws them when network is limited.
+      case error.startsWith('Error: failed to send request'):
+      case error.startsWith('Error: failed to resolve address'):
+        if (i >= remoteOptions.retry!) {
+          throw new NetworkError(error);
+        }
+        break;
 
-    case error.startsWith('Error: unexpected HTTP status code: 401'): // 401 on Ubuntu
-    case error.startsWith('Error: request failed with status code: 401'): // 401 on Windows
-    case error.startsWith('Error: Method connect has thrown an error'):
-    case error.startsWith(
-      'Error: remote credential provider returned an invalid cred type'
-    ): // on Ubuntu
-    case error.startsWith(
-      'Failed to retrieve list of SSH authentication methods'
-    ):
-    case error.startsWith(
-      'Error: too many redirects or authentication replays'
-    ):
-      throw new HTTPError401AuthorizationRequired(error);
+      case error.startsWith('Error: unexpected HTTP status code: 401'): // 401 on Ubuntu
+      case error.startsWith('Error: request failed with status code: 401'): // 401 on Windows
+      case error.startsWith('Error: Method connect has thrown an error'):
+      case error.startsWith(
+        'Error: remote credential provider returned an invalid cred type'
+      ): // on Ubuntu
+      case error.startsWith(
+        'Failed to retrieve list of SSH authentication methods'
+      ):
+      case error.startsWith(
+        'Error: too many redirects or authentication replays'
+      ):
+        throw new HTTPError401AuthorizationRequired(error);
 
-    case error.startsWith('Error: unexpected HTTP status code: 404'): // 404 on Ubuntu
-    case error.startsWith('Error: request failed with status code: 404'): // 404 on Windows
-      throw new HTTPError404NotFound(error);
+      case error.startsWith('Error: unexpected HTTP status code: 404'): // 404 on Ubuntu
+      case error.startsWith('Error: request failed with status code: 404'): // 404 on Windows
+        throw new HTTPError404NotFound(error);
 
-    default:
-      throw new CannotConnectError(error);
+      default:
+        if (i >= remoteOptions.retry!) {
+          throw new CannotConnectError(error);
+        }
+    }
+    // eslint-disable-next-line no-await-in-loop
+    await sleep(remoteOptions.retryInterval!);
   }
 
   return true;
@@ -265,53 +290,64 @@ export async function fetch(
 
   const repos = await nodegit.Repository.open(workingDir);
   const callbacks = createCredentialCallback(remoteOptions);
-  const res = await repos
-    .fetch(remoteName, {
-      callbacks,
-    })
-    .catch((err) => err);
-  // It leaks memory if not cleanup
-  repos.cleanup();
 
-  let error;
-  if (res !== undefined && res !== null) {
-    error = res.message;
-  }
+  for (let i = 0; i < remoteOptions.retry! + 1; i++) {
+    // eslint-disable-next-line no-await-in-loop
+    const res = await repos
+      .fetch(remoteName, {
+        callbacks,
+      })
+      .catch((err) => err);
+    // It leaks memory if not cleanup
+    repos.cleanup();
 
-  // if (error !== 'undefined') console.warn('connect fetch error: ' + error);
-  switch (true) {
-    case error === undefined || error === null:
-      break;
-    case /^remote '.+?' does not exist/.test(error):
-      throw new InvalidGitRemoteError(error);
+    let error;
+    if (res !== undefined && res !== null) {
+      error = res.message;
+    }
 
-    case error.startsWith('unsupported URL protocol'):
-    case error.startsWith('malformed URL'):
-      throw new InvalidURLFormatError(error);
+    // if (error !== 'undefined') console.warn('connect fetch error: ' + error);
+    switch (true) {
+      case error === undefined || error === null:
+        break;
+      case /^remote '.+?' does not exist/.test(error):
+        throw new InvalidGitRemoteError(error);
 
-    // NodeGit throws them when network is limited.
-    case error.startsWith('failed to send request'):
-    case error.startsWith('failed to resolve address'):
-      throw new NetworkError(error);
+      case error.startsWith('unsupported URL protocol'):
+      case error.startsWith('malformed URL'):
+        throw new InvalidURLFormatError(error);
 
-    case error.startsWith('unexpected HTTP status code: 401'): // 401 on Ubuntu
-    case error.startsWith('request failed with status code: 401'): // 401 on Windows
-    case error.startsWith('Method connect has thrown an error'):
-    case error.startsWith(
-      'remote credential provider returned an invalid cred type'
-    ): // on Ubuntu
-    case error.startsWith(
-      'Failed to retrieve list of SSH authentication methods'
-    ):
-    case error.startsWith('too many redirects or authentication replays'):
-      throw new HTTPError401AuthorizationRequired(error);
+      // NodeGit throws them when network is limited.
+      case error.startsWith('failed to send request'):
+      case error.startsWith('failed to resolve address'):
+        if (i >= remoteOptions.retry!) {
+          throw new NetworkError(error);
+        }
+        break;
 
-    case error.startsWith('unexpected HTTP status code: 404'): // 404 on Ubuntu
-    case error.startsWith('request failed with status code: 404'): // 404 on Windows
-      throw new HTTPError404NotFound(error);
+      case error.startsWith('unexpected HTTP status code: 401'): // 401 on Ubuntu
+      case error.startsWith('request failed with status code: 401'): // 401 on Windows
+      case error.startsWith('Method connect has thrown an error'):
+      case error.startsWith(
+        'remote credential provider returned an invalid cred type'
+      ): // on Ubuntu
+      case error.startsWith(
+        'Failed to retrieve list of SSH authentication methods'
+      ):
+      case error.startsWith('too many redirects or authentication replays'):
+        throw new HTTPError401AuthorizationRequired(error);
 
-    default:
-      throw new CannotConnectError(error);
+      case error.startsWith('unexpected HTTP status code: 404'): // 404 on Ubuntu
+      case error.startsWith('request failed with status code: 404'): // 404 on Windows
+        throw new HTTPError404NotFound(error);
+
+      default:
+        if (i >= remoteOptions.retry!) {
+          throw new CannotConnectError(error);
+        }
+    }
+    // eslint-disable-next-line no-await-in-loop
+    await sleep(remoteOptions.retryInterval!);
   }
 }
 
@@ -393,72 +429,83 @@ export async function push(
   const localBranch = 'refs/heads/' + localBranchName;
   const remoteBranch = 'refs/heads/' + remoteBranchName;
 
-  const res = await remote
-    .push([`${localBranch}:${remoteBranch}`], {
-      callbacks,
-    })
-    .catch((err: Error) => {
-      if (
-        err.message.startsWith(
-          'cannot push because a reference that you are trying to update on the remote contains commits that are not present locally'
-        )
-      ) {
-        throw new UnfetchedCommitExistsError();
-      }
-      return err;
-    })
-    .finally(() => {
-      // It leaks memory if not cleanup
-      repos.cleanup();
-    });
+  for (let i = 0; i < remoteOptions.retry! + 1; i++) {
+    // eslint-disable-next-line no-await-in-loop
+    const res = await remote
+      .push([`${localBranch}:${remoteBranch}`], {
+        callbacks,
+      })
+      .catch((err: Error) => {
+        if (
+          err.message.startsWith(
+            'cannot push because a reference that you are trying to update on the remote contains commits that are not present locally'
+          )
+        ) {
+          throw new UnfetchedCommitExistsError();
+        }
+        return err;
+      })
+      .finally(() => {
+        // It leaks memory if not cleanup
+        repos.cleanup();
+      });
 
-  let error = '';
-  if (typeof res !== 'number' && typeof res !== 'undefined') {
-    error = res.message;
-  }
-
-  // console.warn('connect push error: ' + error);
-  switch (true) {
-    case typeof res === 'number' || typeof res === 'undefined':
-      break;
-
-    case error.startsWith('unsupported URL protocol'):
-    case error.startsWith('malformed URL'):
-      throw new InvalidURLFormatError(error);
-
-    // NodeGit throws them when network is limited.
-    case error.startsWith('failed to send request'):
-    case error.startsWith('failed to resolve address'):
-      throw new NetworkError(error);
-
-    case error.startsWith('unexpected HTTP status code: 401'): // 401 on Ubuntu
-    case error.startsWith('request failed with status code: 401'): // 401 on Windows
-    case error.startsWith('Method connect has thrown an error'):
-    case error.startsWith(
-      'remote credential provider returned an invalid cred type'
-    ): // on Ubuntu
-    case error.startsWith(
-      'Failed to retrieve list of SSH authentication methods'
-    ):
-    case error.startsWith('too many redirects or authentication replays'):
-      throw new HTTPError401AuthorizationRequired(error);
-
-    case error.startsWith('unexpected HTTP status code: 404'): // 404 on Ubuntu
-    case error.startsWith('request failed with status code: 404'): // 404 on Windows
-      throw new HTTPError404NotFound(error);
-
-    case error.startsWith('unexpected HTTP status code: 403'): // 403 on Ubuntu
-    case error.startsWith('request failed with status code: 403'): // 403 on Windows
-    case error.startsWith('Error: ERROR: Permission to'): {
-      throw new HTTPError403Forbidden(error);
+    let error = '';
+    if (typeof res !== 'number' && typeof res !== 'undefined') {
+      error = res.message;
     }
 
-    default:
-      throw new CannotConnectError(error);
+    // console.warn('connect push error: ' + error);
+    switch (true) {
+      case typeof res === 'number' || typeof res === 'undefined':
+        break;
+
+      case error.startsWith('unsupported URL protocol'):
+      case error.startsWith('malformed URL'):
+        throw new InvalidURLFormatError(error);
+
+      // NodeGit throws them when network is limited.
+      case error.startsWith('failed to send request'):
+      case error.startsWith('failed to resolve address'):
+        if (i >= remoteOptions.retry!) {
+          throw new NetworkError(error);
+        }
+        break;
+
+      case error.startsWith('unexpected HTTP status code: 401'): // 401 on Ubuntu
+      case error.startsWith('request failed with status code: 401'): // 401 on Windows
+      case error.startsWith('Method connect has thrown an error'):
+      case error.startsWith(
+        'remote credential provider returned an invalid cred type'
+      ): // on Ubuntu
+      case error.startsWith(
+        'Failed to retrieve list of SSH authentication methods'
+      ):
+      case error.startsWith('too many redirects or authentication replays'):
+        throw new HTTPError401AuthorizationRequired(error);
+
+      case error.startsWith('unexpected HTTP status code: 404'): // 404 on Ubuntu
+      case error.startsWith('request failed with status code: 404'): // 404 on Windows
+        throw new HTTPError404NotFound(error);
+
+      case error.startsWith('unexpected HTTP status code: 403'): // 403 on Ubuntu
+      case error.startsWith('request failed with status code: 403'): // 403 on Windows
+      case error.startsWith('Error: ERROR: Permission to'): {
+        throw new HTTPError403Forbidden(error);
+      }
+
+      default:
+        if (i >= remoteOptions.retry!) {
+          throw new CannotConnectError(error);
+        }
+    }
+    // eslint-disable-next-line no-await-in-loop
+    await sleep(remoteOptions.retryInterval!);
   }
 
   await validatePushResult(
     repos,
+    remoteOptions,
     workingDir,
     remoteName,
     remoteBranchName,
@@ -476,23 +523,35 @@ export async function push(
  */
 async function validatePushResult(
   repos: nodegit.Repository,
+  remoteOptions: RemoteOptions,
   workingDir: string,
   remoteName: string,
   remoteBranchName: string,
   callbacks: RemoteCallbacks
 ): Promise<void> {
-  await repos
-    .fetch(remoteName, {
-      callbacks,
-    })
-    .catch((err) => {
-      // push() already check errors except network errors.
-      // So throw only network errors here.
-      throw new CannotConnectError(err.message);
-    })
-    .finally(() => {
-      repos.cleanup();
-    });
+  for (let i = 0; i < remoteOptions.retry! + 1; i++) {
+    // eslint-disable-next-line no-await-in-loop
+    const error = await repos
+      .fetch(remoteName, {
+        callbacks,
+      })
+      .catch((err) => {
+        // push() already check errors except network errors.
+        // So throw only network errors here.
+        if (i >= remoteOptions.retry!) {
+          throw new CannotConnectError(err.message);
+        }
+        else return err;
+      })
+      .finally(() => {
+        repos.cleanup();
+      });
+    if (!(error instanceof Error)) {
+      break;
+    }
+    // eslint-disable-next-line no-await-in-loop
+    await sleep(remoteOptions.retryInterval!);
+  }
 
   // Use isomorphic-git to avoid memory leak
   const localCommitOid = await git.resolveRef({
