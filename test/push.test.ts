@@ -178,7 +178,7 @@ maybe('<remote-nodegit> push', () => {
     });
   });
 
-  it('throws InvalidURLFormat by push when http protocol is missing', async () => {
+  it.only('throws InvalidURLFormat by push when http protocol is missing', async () => {
     const dbA: GitDocumentDB = new GitDocumentDB({
       dbName: serialId(),
       localDir,

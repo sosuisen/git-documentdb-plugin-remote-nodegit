@@ -1,0 +1,30 @@
+{
+  "version": "0.2.0",
+  "inputs": [{
+    "type": "pickString",
+    "id": "choice",
+    "description": "select a file",
+    "options": ["test/push.test.js"],
+  }],
+  "configurations": [
+      {
+          "type": "node",
+          "request": "launch",
+          "name": "Run mocha for current opened files",
+          "program": "${workspaceRoot}/node_modules/mocha/bin/_mocha",
+          "preLaunchTask": "Compile tests",
+          "args": [
+            "--reporter",
+            "list",
+            "--parallel",
+            "false",
+            "--retries",
+            "3",
+            "--timeout",
+            "30000",
+            "${workspaceFolder}/dist/${input:choice}"
+          ],
+          "cwd": "${workspaceRoot}",
+      }
+  ],
+}
