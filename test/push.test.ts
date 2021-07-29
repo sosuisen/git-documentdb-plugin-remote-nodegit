@@ -8,10 +8,12 @@
  */
 
 import path from 'path';
+import git from 'isomorphic-git';
 import nodegit from 'nodegit';
 import fs from 'fs-extra';
 import expect from 'expect';
 import {
+  CannotConnectError,
   HTTPError401AuthorizationRequired,
   HTTPError403Forbidden,
   HTTPError404NotFound,
@@ -33,9 +35,6 @@ import {
   destroyDBs,
   removeRemoteRepositories,
 } from './remote_utils';
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const remote_nodegit = require('../src/remote-nodegit');
 
 const reposPrefix = 'test_remote_nodegit_push___';
 const localDir = `./test/database_push`;
@@ -188,7 +187,7 @@ maybe('<remote-nodegit> push', () => {
       await destroyDBs([dbA]);
     });
 
-    it.only('after retrying push()', async () => {
+    it('after retrying push()', async () => {
       const dbA: GitDocumentDB = new GitDocumentDB({
         dbName: serialId(),
         localDir,
@@ -198,23 +197,187 @@ maybe('<remote-nodegit> push', () => {
       await createRemoteRepository(remoteUrl);
       await createGitRemote(dbA.workingDir, remoteUrl);
 
-      const stubPush = sandbox.stub(remote_nodegit, 'pushCaller');
-      stubPush.onCall(0).rejects(new NetworkError(''));
-      stubPush.onCall(1).rejects(new NetworkError(''));
-      stubPush.onCall(2).rejects(new NetworkError(''));
-      stubPush.onCall(3).resolves(1);
+      let pushCounter = 0;
+      const stubOpen = sandbox.stub(nodegit.Repository, 'open');
+      // Create fake Repository.open() that returns fake Remote by calling getRemote()
+      stubOpen.callsFake(async function (dir) {
+        const repos = await stubOpen.wrappedMethod(dir); // Call original nodegit.Repository.open();
+        // @ts-ignore
+        repos.getRemote = () => {
+          return Promise.resolve({
+            push: () => {
+              if (pushCounter < 3) {
+                pushCounter++;
+                return Promise.reject(new Error('failed to send request'));
+              }
+              pushCounter++;
+              return Promise.resolve(1);
+            },
+            fetch: () => {
+              return Promise.resolve(undefined);
+            },
+            disconnect: () => {},
+          });
+        };
+        return repos;
+      });
+
+      sandbox.stub(git, 'resolveRef').resolves(undefined);
+      sandbox.stub(git, 'findMergeBase').resolves([undefined]);
 
       const res = await push(dbA.workingDir, {
         remoteUrl,
         connection: { type: 'github', personalAccessToken: token },
-      }).catch((error) => error);
+      }).catch((error: Error) => error);
 
       expect(res).toBeUndefined();
 
-      expect(stubPush.callCount).toBe(4);
+      expect(pushCounter).toBe(4);
 
       await destroyDBs([dbA]);
     });
+
+    it('after retrying validatePushResult()', async () => {
+      const dbA: GitDocumentDB = new GitDocumentDB({
+        dbName: serialId(),
+        localDir,
+      });
+      const remoteUrl = remoteURLBase + serialId();
+      await dbA.open();
+      await createRemoteRepository(remoteUrl);
+      await createGitRemote(dbA.workingDir, remoteUrl);
+
+      let pushValidateCounter = 0;
+      const stubOpen = sandbox.stub(nodegit.Repository, 'open');
+      // Create fake Repository.open() that returns fake Remote by calling getRemote()
+      stubOpen.callsFake(async function (dir) {
+        const repos = await stubOpen.wrappedMethod(dir); // Call original nodegit.Repository.open();
+        // @ts-ignore
+        repos.getRemote = () => {
+          return Promise.resolve({
+            push: () => {
+              return Promise.resolve(1);
+            },
+            fetch: () => {
+              if (pushValidateCounter < 3) {
+                pushValidateCounter++;
+                return Promise.reject(new Error('foo'));
+              }
+              pushValidateCounter++;
+              return Promise.resolve(undefined);
+            },
+            disconnect: () => {},
+          });
+        };
+        return repos;
+      });
+
+      sandbox.stub(git, 'resolveRef').resolves(undefined);
+      sandbox.stub(git, 'findMergeBase').resolves([undefined]);
+
+      const res = await push(dbA.workingDir, {
+        remoteUrl,
+        connection: { type: 'github', personalAccessToken: token },
+      }).catch((error: Error) => error);
+
+      expect(res).toBeUndefined();
+
+      expect(pushValidateCounter).toBe(4);
+
+      await destroyDBs([dbA]);
+    });
+  });
+
+  it('throws NetworkError after retrying push()', async () => {
+    const dbA: GitDocumentDB = new GitDocumentDB({
+      dbName: serialId(),
+      localDir,
+    });
+    const remoteUrl = remoteURLBase + serialId();
+    await dbA.open();
+    await createRemoteRepository(remoteUrl);
+    await createGitRemote(dbA.workingDir, remoteUrl);
+
+    let pushCounter = 0;
+    const stubOpen = sandbox.stub(nodegit.Repository, 'open');
+    // Create fake Repository.open() that returns fake Remote by calling getRemote()
+    stubOpen.callsFake(async function (dir) {
+      const repos = await stubOpen.wrappedMethod(dir); // Call original nodegit.Repository.open();
+      // @ts-ignore
+      repos.getRemote = () => {
+        return Promise.resolve({
+          push: () => {
+            pushCounter++;
+            return Promise.reject(new Error('failed to send request'));
+          },
+          fetch: () => {
+            return Promise.resolve(undefined);
+          },
+          disconnect: () => {},
+        });
+      };
+      return repos;
+    });
+
+    sandbox.stub(git, 'resolveRef').resolves(undefined);
+    sandbox.stub(git, 'findMergeBase').resolves([undefined]);
+
+    const res = await push(dbA.workingDir, {
+      remoteUrl,
+      connection: { type: 'github', personalAccessToken: token },
+    }).catch((error: Error) => error);
+
+    expect(res).toBeInstanceOf(NetworkError);
+
+    expect(pushCounter).toBe(4);
+
+    await destroyDBs([dbA]);
+  });
+
+  it('throws CannotConnectError after retrying validatePushResult()', async () => {
+    const dbA: GitDocumentDB = new GitDocumentDB({
+      dbName: serialId(),
+      localDir,
+    });
+    const remoteUrl = remoteURLBase + serialId();
+    await dbA.open();
+    await createRemoteRepository(remoteUrl);
+    await createGitRemote(dbA.workingDir, remoteUrl);
+
+    let pushValidateCounter = 0;
+    const stubOpen = sandbox.stub(nodegit.Repository, 'open');
+    // Create fake Repository.open() that returns fake Remote by calling getRemote()
+    stubOpen.callsFake(async function (dir) {
+      const repos = await stubOpen.wrappedMethod(dir); // Call original nodegit.Repository.open();
+      // @ts-ignore
+      repos.getRemote = () => {
+        return Promise.resolve({
+          push: () => {
+            return Promise.resolve(1);
+          },
+          fetch: () => {
+            pushValidateCounter++;
+            return Promise.reject(new Error('foo'));
+          },
+          disconnect: () => {},
+        });
+      };
+      return repos;
+    });
+
+    sandbox.stub(git, 'resolveRef').resolves(undefined);
+    sandbox.stub(git, 'findMergeBase').resolves([undefined]);
+
+    const res = await push(dbA.workingDir, {
+      remoteUrl,
+      connection: { type: 'github', personalAccessToken: token },
+    }).catch((error: Error) => error);
+
+    expect(res).toBeInstanceOf(CannotConnectError);
+
+    expect(pushValidateCounter).toBe(4);
+
+    await destroyDBs([dbA]);
   });
 
   it('throws InvalidURLFormat by push when http protocol is missing', async () => {

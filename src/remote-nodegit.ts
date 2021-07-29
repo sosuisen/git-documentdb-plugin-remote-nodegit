@@ -449,7 +449,10 @@ export async function push(
 
   for (let i = 0; i < remoteOptions.retry! + 1; i++) {
     // eslint-disable-next-line no-await-in-loop
-    const res = await pushCaller(remote, localBranch, remoteBranch, callbacks)
+    const res = await remote
+      .push([`${localBranch}:${remoteBranch}`], {
+        callbacks,
+      })
       .catch((err: Error) => {
         if (
           err.message.startsWith(
@@ -464,7 +467,6 @@ export async function push(
         // It leaks memory if not cleanup
         repos.cleanup();
       });
-
     let error = '';
     if (typeof res !== 'number' && typeof res !== 'undefined') {
       error = res.message;
@@ -529,32 +531,14 @@ export async function push(
 }
 
 /**
- * small module for test using stub
- *
- * @internal
- */
-export function pushCaller(
-  remote: nodegit.Remote,
-  localBranch: string,
-  remoteBranch: string,
-  callbacks:
-    | nodegit.RemoteCallbacks
-    | {
-        credentials: any;
-      }
-) {
-  return remote.push([`${localBranch}:${remoteBranch}`], {
-    callbacks,
-  });
-}
-
-/**
  * NodeGit.Remote.push does not throw following error in race condition:
  * 'cannot push because a reference that you are trying to update on the remote contains commits that are not present locally'
  * So check remote changes again.
  *
  * @throws {@link CannotConnectError}
  * @throws {@link UnfetchedCommitExistsError}
+ *
+ * @internal
  */
 async function validatePushResult(
   repos: nodegit.Repository,
