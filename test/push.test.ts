@@ -24,6 +24,7 @@ import {
   UnfetchedCommitExistsError,
 } from 'git-documentdb-remote-errors';
 import { GitDocumentDB, RemoteOptions } from 'git-documentdb';
+import sinon from 'sinon';
 import { clone, push } from '../src/remote-nodegit';
 import {
   createClonedDatabases,
@@ -33,6 +34,9 @@ import {
   removeRemoteRepositories,
 } from './remote_utils';
 
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const remote_nodegit = require('../src/remote-nodegit');
+
 const reposPrefix = 'test_remote_nodegit_push___';
 const localDir = `./test/database_push`;
 
@@ -41,9 +45,16 @@ const serialId = () => {
   return `${reposPrefix}${idCounter++}`;
 };
 
+// Use sandbox to restore stub and spy in parallel mocha tests
+let sandbox: sinon.SinonSandbox;
 beforeEach(function () {
+  sandbox = sinon.createSandbox();
   // @ts-ignore
   console.log(`... ${this.currentTest.fullTitle()}`);
+});
+
+afterEach(function () {
+  sandbox.restore();
 });
 
 before(() => {
@@ -176,9 +187,37 @@ maybe('<remote-nodegit> push', () => {
 
       await destroyDBs([dbA]);
     });
+
+    it.only('after retrying push()', async () => {
+      const dbA: GitDocumentDB = new GitDocumentDB({
+        dbName: serialId(),
+        localDir,
+      });
+      const remoteUrl = remoteURLBase + serialId();
+      await dbA.open();
+      await createRemoteRepository(remoteUrl);
+      await createGitRemote(dbA.workingDir, remoteUrl);
+
+      const stubPush = sandbox.stub(remote_nodegit, 'pushCaller');
+      stubPush.onCall(0).rejects(new NetworkError(''));
+      stubPush.onCall(1).rejects(new NetworkError(''));
+      stubPush.onCall(2).rejects(new NetworkError(''));
+      stubPush.onCall(3).resolves(1);
+
+      const res = await push(dbA.workingDir, {
+        remoteUrl,
+        connection: { type: 'github', personalAccessToken: token },
+      }).catch((error) => error);
+
+      expect(res).toBeUndefined();
+
+      expect(stubPush.callCount).toBe(4);
+
+      await destroyDBs([dbA]);
+    });
   });
 
-  it.only('throws InvalidURLFormat by push when http protocol is missing', async () => {
+  it('throws InvalidURLFormat by push when http protocol is missing', async () => {
     const dbA: GitDocumentDB = new GitDocumentDB({
       dbName: serialId(),
       localDir,

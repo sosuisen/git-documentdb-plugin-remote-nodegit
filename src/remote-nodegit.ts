@@ -23,6 +23,9 @@ import {
 import { RemoteOptions } from './types';
 import { createCredentialCallback } from './authentication';
 
+const NETWORK_RETRY = 3;
+const NETWORK_RETRY_INTERVAL = 1000;
+
 /**
  * @internal
  */
@@ -73,6 +76,9 @@ export async function clone(
   });
   logger.debug(`remote-nodegit: clone: ${remoteOptions.remoteUrl}`);
 
+  remoteOptions.retry ??= NETWORK_RETRY;
+  remoteOptions.retryInterval ??= NETWORK_RETRY_INTERVAL;
+
   for (let i = 0; i < remoteOptions.retry! + 1; i++) {
     // eslint-disable-next-line no-await-in-loop
     const res = await nodegit.Clone.clone(
@@ -89,12 +95,12 @@ export async function clone(
     if (res instanceof Error) {
       error = res.message;
     }
+    else {
+      break;
+    }
 
     // if (error !== 'undefined') console.warn('connect fetch error: ' + error);
     switch (true) {
-      case error === '':
-        break;
-
       case error.startsWith('unsupported URL protocol'):
       case error.startsWith('malformed URL'):
         throw new InvalidURLFormatError(error);
@@ -197,6 +203,9 @@ export async function checkFetch(
     throw new InvalidGitRemoteError(`remote '${remoteName}' does not exist`);
   }
 
+  remoteOptions.retry ??= NETWORK_RETRY;
+  remoteOptions.retryInterval ??= NETWORK_RETRY_INTERVAL;
+
   for (let i = 0; i < remoteOptions.retry! + 1; i++) {
     const error = String(
       // eslint-disable-next-line no-await-in-loop
@@ -207,10 +216,12 @@ export async function checkFetch(
     // eslint-disable-next-line no-await-in-loop
     await remote.disconnect();
 
+    if (error === 'undefined') {
+      break;
+    }
+
     // if (error !== 'undefined') console.warn('connect fetch error: ' + error);
     switch (true) {
-      case error === 'undefined':
-        break;
       case error.startsWith('Error: unsupported URL protocol'):
       case error.startsWith('Error: malformed URL'):
         throw new InvalidURLFormatError(error);
@@ -291,6 +302,9 @@ export async function fetch(
   const repos = await nodegit.Repository.open(workingDir);
   const callbacks = createCredentialCallback(remoteOptions);
 
+  remoteOptions.retry ??= NETWORK_RETRY;
+  remoteOptions.retryInterval ??= NETWORK_RETRY_INTERVAL;
+
   for (let i = 0; i < remoteOptions.retry! + 1; i++) {
     // eslint-disable-next-line no-await-in-loop
     const res = await repos
@@ -305,11 +319,12 @@ export async function fetch(
     if (res !== undefined && res !== null) {
       error = res.message;
     }
+    else {
+      break;
+    }
 
     // if (error !== 'undefined') console.warn('connect fetch error: ' + error);
     switch (true) {
-      case error === undefined || error === null:
-        break;
       case /^remote '.+?' does not exist/.test(error):
         throw new InvalidGitRemoteError(error);
 
@@ -429,12 +444,12 @@ export async function push(
   const localBranch = 'refs/heads/' + localBranchName;
   const remoteBranch = 'refs/heads/' + remoteBranchName;
 
+  remoteOptions.retry ??= NETWORK_RETRY;
+  remoteOptions.retryInterval ??= NETWORK_RETRY_INTERVAL;
+
   for (let i = 0; i < remoteOptions.retry! + 1; i++) {
     // eslint-disable-next-line no-await-in-loop
-    const res = await remote
-      .push([`${localBranch}:${remoteBranch}`], {
-        callbacks,
-      })
+    const res = await pushCaller(remote, localBranch, remoteBranch, callbacks)
       .catch((err: Error) => {
         if (
           err.message.startsWith(
@@ -454,12 +469,12 @@ export async function push(
     if (typeof res !== 'number' && typeof res !== 'undefined') {
       error = res.message;
     }
+    else {
+      break;
+    }
 
     // console.warn('connect push error: ' + error);
     switch (true) {
-      case typeof res === 'number' || typeof res === 'undefined':
-        break;
-
       case error.startsWith('unsupported URL protocol'):
       case error.startsWith('malformed URL'):
         throw new InvalidURLFormatError(error);
@@ -511,6 +526,26 @@ export async function push(
     remoteBranchName,
     callbacks
   );
+}
+
+/**
+ * small module for test using stub
+ *
+ * @internal
+ */
+export function pushCaller(
+  remote: nodegit.Remote,
+  localBranch: string,
+  remoteBranch: string,
+  callbacks:
+    | nodegit.RemoteCallbacks
+    | {
+        credentials: any;
+      }
+) {
+  return remote.push([`${localBranch}:${remoteBranch}`], {
+    callbacks,
+  });
 }
 
 /**
