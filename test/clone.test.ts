@@ -9,6 +9,7 @@
 
 import path from 'path';
 import fs from 'fs-extra';
+import nodegit from 'nodegit';
 import expect from 'expect';
 import {
   HTTPError401AuthorizationRequired,
@@ -21,6 +22,7 @@ import {
 } from 'git-documentdb-remote-errors';
 import { GitDocumentDB } from 'git-documentdb';
 import git from 'isomorphic-git';
+import sinon from 'sinon';
 import { clone } from '../src/remote-nodegit';
 import { destroyDBs, removeRemoteRepositories } from './remote_utils';
 
@@ -32,9 +34,16 @@ const serialId = () => {
   return `${reposPrefix}${idCounter++}`;
 };
 
+// Use sandbox to restore stub and spy in parallel mocha tests
+let sandbox: sinon.SinonSandbox;
 beforeEach(function () {
+  sandbox = sinon.createSandbox();
   // @ts-ignore
   console.log(`... ${this.currentTest.fullTitle()}`);
+});
+
+afterEach(function () {
+  sandbox.restore();
 });
 
 before(() => {
@@ -156,6 +165,53 @@ maybe('<remote-nodegit> clone', () => {
 
       await destroyDBs([dbA]);
     });
+
+    it('after retries', async () => {
+      const dbA: GitDocumentDB = new GitDocumentDB({
+        dbName: serialId(),
+        localDir,
+      });
+      const remoteUrl = remoteURLBase + 'test-public.git';
+      fs.ensureDirSync(dbA.workingDir);
+
+      const cloneStub = sandbox.stub(nodegit.Clone, 'clone');
+      cloneStub.onCall(0).rejects(new Error('failed to send request'));
+      cloneStub.onCall(1).rejects(new Error('failed to send request'));
+      cloneStub.onCall(2).rejects(new Error('failed to send request'));
+      cloneStub.onCall(3).resolves(undefined);
+
+      const res = await clone(dbA.workingDir, {
+        remoteUrl,
+        connection: { type: 'github' },
+      }).catch((error) => error);
+      expect(res).toBeUndefined();
+
+      expect(cloneStub.callCount).toBe(4);
+
+      await destroyDBs([dbA]);
+    });
+  });
+
+  it('throws NetworkError after retries', async () => {
+    const dbA: GitDocumentDB = new GitDocumentDB({
+      dbName: serialId(),
+      localDir,
+    });
+    const remoteUrl = remoteURLBase + 'test-public.git';
+    fs.ensureDirSync(dbA.workingDir);
+
+    const cloneStub = sandbox.stub(nodegit.Clone, 'clone');
+    cloneStub.rejects(new Error('failed to send request'));
+
+    const res = await clone(dbA.workingDir, {
+      remoteUrl,
+      connection: { type: 'github' },
+    }).catch((error) => error);
+    expect(res).toBeInstanceOf(NetworkError);
+
+    expect(cloneStub.callCount).toBe(4);
+
+    await destroyDBs([dbA]);
   });
 
   it('throws InvalidURLFormat by clone when http protocol is missing', async () => {

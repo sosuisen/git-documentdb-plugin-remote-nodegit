@@ -8,6 +8,7 @@
  */
 
 import path from 'path';
+import nodegit from 'nodegit';
 import fs from 'fs-extra';
 import expect from 'expect';
 import {
@@ -20,6 +21,7 @@ import {
   NetworkError,
 } from 'git-documentdb-remote-errors';
 import { GitDocumentDB } from 'git-documentdb';
+import sinon from 'sinon';
 import { checkFetch } from '../src/remote-nodegit';
 import {
   createGitRemote,
@@ -35,9 +37,16 @@ const serialId = () => {
   return `${reposPrefix}${idCounter++}`;
 };
 
+// Use sandbox to restore stub and spy in parallel mocha tests
+let sandbox: sinon.SinonSandbox;
 beforeEach(function () {
+  sandbox = sinon.createSandbox();
   // @ts-ignore
   console.log(`... ${this.currentTest.fullTitle()}`);
+});
+
+afterEach(function () {
+  sandbox.restore();
 });
 
 before(() => {
@@ -134,6 +143,88 @@ maybe('<remote-nodegit> checkFetch', () => {
 
       await destroyDBs([dbA]);
     });
+
+    it('after retries', async () => {
+      const dbA: GitDocumentDB = new GitDocumentDB({
+        dbName: serialId(),
+        localDir,
+      });
+      await dbA.open();
+
+      const remoteUrl = remoteURLBase + 'test-private.git';
+      await createGitRemote(dbA.workingDir, remoteUrl);
+
+      let counter = 0;
+      const stubOpen = sandbox.stub(nodegit.Repository, 'open');
+      // Create fake Repository.open() that returns fake Remote by calling getRemote()
+      stubOpen.callsFake(async function (dir) {
+        const repos = await stubOpen.wrappedMethod(dir); // Call original nodegit.Repository.open();
+        // @ts-ignore
+        repos.getRemote = () => {
+          return Promise.resolve({
+            connect: () => {
+              if (counter < 3) {
+                counter++;
+                return Promise.reject(new Error('failed to send request'));
+              }
+              counter++;
+              return Promise.resolve(undefined);
+            },
+            disconnect: () => {},
+          });
+        };
+        return repos;
+      });
+
+      const res = await checkFetch(dbA.workingDir, {
+        remoteUrl,
+        connection: { type: 'github', personalAccessToken: token },
+      }).catch((error) => error);
+      expect(res).not.toBeInstanceOf(Error);
+
+      expect(counter).toBe(4);
+
+      await destroyDBs([dbA]);
+    });
+  });
+
+  it('throws NetworkError after retries', async () => {
+    const dbA: GitDocumentDB = new GitDocumentDB({
+      dbName: serialId(),
+      localDir,
+    });
+    await dbA.open();
+
+    const remoteUrl = remoteURLBase + 'test-private.git';
+    await createGitRemote(dbA.workingDir, remoteUrl);
+
+    let counter = 0;
+    const stubOpen = sandbox.stub(nodegit.Repository, 'open');
+    // Create fake Repository.open() that returns fake Remote by calling getRemote()
+    stubOpen.callsFake(async function (dir) {
+      const repos = await stubOpen.wrappedMethod(dir); // Call original nodegit.Repository.open();
+      // @ts-ignore
+      repos.getRemote = () => {
+        return Promise.resolve({
+          connect: () => {
+            counter++;
+            return Promise.reject(new Error('failed to send request'));
+          },
+          disconnect: () => {},
+        });
+      };
+      return repos;
+    });
+
+    const res = await checkFetch(dbA.workingDir, {
+      remoteUrl,
+      connection: { type: 'github', personalAccessToken: token },
+    }).catch((error) => error);
+    expect(res).toBeInstanceOf(NetworkError);
+
+    expect(counter).toBe(4);
+
+    await destroyDBs([dbA]);
   });
 
   it('throws InvalidURLFormat by checkFetch when http protocol is missing', async () => {

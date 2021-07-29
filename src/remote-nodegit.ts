@@ -159,11 +159,6 @@ export async function clone(
 }
 
 /**
- * GitOrigin
- */
-type GitRemoteAction = 'add' | 'change' | 'exist';
-
-/**
  * Check connection by FETCH
  *
  * @throws {@link InvalidGitRemoteError}
@@ -197,11 +192,15 @@ export async function checkFetch(
   });
   const callbacks = createCredentialCallback(remoteOptions);
   const repos = await nodegit.Repository.open(workingDir);
-  // Get NodeGit.Remote
-  const remote = await nodegit.Remote.lookup(repos, remoteName).catch(() => {});
-  if (remote === undefined) {
-    throw new InvalidGitRemoteError(`remote '${remoteName}' does not exist`);
-  }
+
+  const remote: nodegit.Remote = await repos
+    .getRemote(remoteName)
+    .catch((err) => {
+      if (/^remote '.+?' does not exist/.test(err.message)) {
+        throw new InvalidGitRemoteError(err.message);
+      }
+      throw err;
+    });
 
   remoteOptions.retry ??= NETWORK_RETRY;
   remoteOptions.retryInterval ??= NETWORK_RETRY_INTERVAL;
