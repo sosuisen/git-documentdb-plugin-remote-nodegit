@@ -132,7 +132,7 @@ maybe('<remote-nodegit> clone', () => {
       await destroyDBs([dbA]);
     });
 
-    it('set another remote name', async () => {
+    it('set default and another remote name', async () => {
       const dbA: GitDocumentDB = new GitDocumentDB({
         dbName: serialId(),
         localDir,
@@ -148,6 +148,20 @@ maybe('<remote-nodegit> clone', () => {
         'another'
       ).catch((error) => error);
       expect(res).toBeUndefined();
+
+      const urlDefault = await git.getConfig({
+        fs,
+        dir: dbA.workingDir,
+        path: 'remote.origin.url',
+      });
+      expect(urlDefault).toBe(remoteUrl);
+
+      const fetchDefault = await git.getConfig({
+        fs,
+        dir: dbA.workingDir,
+        path: 'remote.origin.fetch',
+      });
+      expect(fetchDefault).toBe(`+refs/heads/*:refs/remotes/origin/*`);
 
       const url = await git.getConfig({
         fs,
@@ -179,6 +193,10 @@ maybe('<remote-nodegit> clone', () => {
       cloneStub.onCall(1).rejects(new Error('failed to send request'));
       cloneStub.onCall(2).rejects(new Error('failed to send request'));
       cloneStub.onCall(3).resolves(undefined);
+
+      // Skip addRemote because repository is empty
+      const remoteStub = sandbox.stub(git, 'addRemote');
+      remoteStub.resolves();
 
       const res = await clone(dbA.workingDir, {
         remoteUrl,
