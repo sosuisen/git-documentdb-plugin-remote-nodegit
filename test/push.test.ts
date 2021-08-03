@@ -944,19 +944,32 @@ maybe('<remote-nodegit> push', () => {
       });
       await dbB.open();
       const syncB = await dbB.sync(options);
+
       const jsonB1 = { _id: '1', name: 'fromB' };
       await dbB.put(jsonB1);
 
       await expect(
         Promise.all([
-          push(dbA.workingDir, {
-            remoteUrl: syncA.remoteURL,
-            connection: { type: 'github', personalAccessToken: token },
-          }),
-          push(dbB.workingDir, {
-            remoteUrl: syncB.remoteURL,
-            connection: { type: 'github', personalAccessToken: token },
-          }),
+          push(
+            dbA.workingDir,
+            {
+              remoteUrl: syncA.remoteURL,
+              connection: { type: 'github', personalAccessToken: token },
+            },
+            syncA.remoteName,
+            dbA.defaultBranch,
+            dbA.defaultBranch
+          ),
+          push(
+            dbB.workingDir,
+            {
+              remoteUrl: syncB.remoteURL,
+              connection: { type: 'github', personalAccessToken: token },
+            },
+            syncB.remoteName,
+            dbB.defaultBranch,
+            dbB.defaultBranch
+          ),
         ])
       ).rejects.toThrowError(UnfetchedCommitExistsError);
 
