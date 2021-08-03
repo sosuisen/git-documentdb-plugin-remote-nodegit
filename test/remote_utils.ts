@@ -25,7 +25,7 @@ const token = process.env.GITDDB_PERSONAL_ACCESS_TOKEN!;
 export async function createGitRemote(
   localDir: string,
   remoteUrl: string,
-  remoteName = 'origin'
+  remoteName: string
 ) {
   await git.setConfig({
     fs,

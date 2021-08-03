@@ -21,7 +21,7 @@ import {
   InvalidURLFormatError,
   NetworkError,
 } from 'git-documentdb-remote-errors';
-import { GitDocumentDB } from 'git-documentdb';
+import { ConnectionSettingsGitHub, GitDocumentDB, Sync } from 'git-documentdb';
 import sinon from 'sinon';
 import { fetch } from '../src/remote-nodegit';
 import {
@@ -118,11 +118,21 @@ maybe('<remote-nodegit> fetch', () => {
       await dbA.open();
 
       const remoteUrl = remoteURLBase + 'test-public.git';
-      await createGitRemote(dbA.workingDir, remoteUrl);
-      const res = await fetch(dbA.workingDir, {
+      const remoteOptions = {
         remoteUrl,
-        connection: { type: 'github' },
-      }).catch((error) => error);
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+        connection: { type: 'github' } as ConnectionSettingsGitHub,
+      };
+      const sync = new Sync(dbA, remoteOptions);
+      await createGitRemote(dbA.workingDir, remoteUrl, sync.remoteName);
+
+      const res = await fetch(
+        dbA.workingDir,
+        remoteOptions,
+        sync.remoteName,
+        dbA.defaultBranch,
+        dbA.defaultBranch
+      ).catch((error) => error);
       expect(res).toBeUndefined();
 
       await destroyDBs([dbA]);
@@ -136,12 +146,23 @@ maybe('<remote-nodegit> fetch', () => {
       await dbA.open();
 
       const remoteUrl = remoteURLBase + 'test-public.git';
-
-      await createGitRemote(dbA.workingDir, remoteUrl);
-      const res = await fetch(dbA.workingDir, {
+      const remoteOptions = {
         remoteUrl,
-        connection: { type: 'github', personalAccessToken: token },
-      }).catch((error) => error);
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+        connection: {
+          type: 'github',
+          personalAccessToken: token,
+        } as ConnectionSettingsGitHub,
+      };
+      const sync = new Sync(dbA, remoteOptions);
+      await createGitRemote(dbA.workingDir, remoteUrl, sync.remoteName);
+      const res = await fetch(
+        dbA.workingDir,
+        remoteOptions,
+        sync.remoteName,
+        dbA.defaultBranch,
+        dbA.defaultBranch
+      ).catch((error) => error);
       expect(res).toBeUndefined();
 
       await destroyDBs([dbA]);
@@ -155,12 +176,24 @@ maybe('<remote-nodegit> fetch', () => {
       await dbA.open();
 
       const remoteUrl = remoteURLBase + 'test-private.git';
-      await createGitRemote(dbA.workingDir, remoteUrl);
-
-      const res = await fetch(dbA.workingDir, {
+      const remoteOptions = {
         remoteUrl,
-        connection: { type: 'github', personalAccessToken: token },
-      }).catch((error) => error);
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+        connection: {
+          type: 'github',
+          personalAccessToken: token,
+        } as ConnectionSettingsGitHub,
+      };
+      const sync = new Sync(dbA, remoteOptions);
+      await createGitRemote(dbA.workingDir, remoteUrl, sync.remoteName);
+
+      const res = await fetch(
+        dbA.workingDir,
+        remoteOptions,
+        sync.remoteName,
+        dbA.defaultBranch,
+        dbA.defaultBranch
+      ).catch((error) => error);
       expect(res).toBeUndefined();
 
       await destroyDBs([dbA]);
@@ -174,7 +207,16 @@ maybe('<remote-nodegit> fetch', () => {
       await dbA.open();
 
       const remoteUrl = remoteURLBase + 'test-private.git';
-      await createGitRemote(dbA.workingDir, remoteUrl);
+      const remoteOptions = {
+        remoteUrl,
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+        connection: {
+          type: 'github',
+          personalAccessToken: token,
+        } as ConnectionSettingsGitHub,
+      };
+      const sync = new Sync(dbA, remoteOptions);
+      await createGitRemote(dbA.workingDir, remoteUrl, sync.remoteName);
 
       let counter = 0;
       const stubOpen = sandbox.stub(nodegit.Repository, 'open');
@@ -198,10 +240,13 @@ maybe('<remote-nodegit> fetch', () => {
         return repos;
       });
 
-      const res = await fetch(dbA.workingDir, {
-        remoteUrl,
-        connection: { type: 'github', personalAccessToken: token },
-      }).catch((error) => error);
+      const res = await fetch(
+        dbA.workingDir,
+        remoteOptions,
+        sync.remoteName,
+        dbA.defaultBranch,
+        dbA.defaultBranch
+      ).catch((error) => error);
       expect(res).toBeUndefined();
 
       expect(counter).toBe(4);
@@ -218,7 +263,16 @@ maybe('<remote-nodegit> fetch', () => {
     await dbA.open();
 
     const remoteUrl = remoteURLBase + 'test-private.git';
-    await createGitRemote(dbA.workingDir, remoteUrl);
+    const remoteOptions = {
+      remoteUrl,
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+      connection: {
+        type: 'github',
+        personalAccessToken: token,
+      } as ConnectionSettingsGitHub,
+    };
+    const sync = new Sync(dbA, remoteOptions);
+    await createGitRemote(dbA.workingDir, remoteUrl, sync.remoteName);
 
     let counter = 0;
     const stubOpen = sandbox.stub(nodegit.Repository, 'open');
@@ -238,10 +292,13 @@ maybe('<remote-nodegit> fetch', () => {
       return repos;
     });
 
-    const res = await fetch(dbA.workingDir, {
-      remoteUrl,
-      connection: { type: 'github', personalAccessToken: token },
-    }).catch((error) => error);
+    const res = await fetch(
+      dbA.workingDir,
+      remoteOptions,
+      sync.remoteName,
+      dbA.defaultBranch,
+      dbA.defaultBranch
+    ).catch((error) => error);
     expect(res).toBeInstanceOf(NetworkError);
 
     expect(counter).toBe(4);
@@ -257,7 +314,7 @@ maybe('<remote-nodegit> fetch', () => {
     await dbA.open();
 
     const remoteUrl = 'foo-bar';
-    await createGitRemote(dbA.workingDir, remoteUrl);
+    await createGitRemote(dbA.workingDir, remoteUrl, 'origin');
 
     const err = await fetch(dbA.workingDir, { remoteUrl }).catch(
       (error) => error
@@ -279,7 +336,7 @@ maybe('<remote-nodegit> fetch', () => {
     await dbA.open();
 
     const remoteUrl = 'https://foo.example.com:xxxx';
-    await createGitRemote(dbA.workingDir, remoteUrl);
+    await createGitRemote(dbA.workingDir, remoteUrl, 'origin');
 
     const err = await fetch(dbA.workingDir, { remoteUrl }).catch(
       (error) => error
@@ -301,7 +358,7 @@ maybe('<remote-nodegit> fetch', () => {
       const remoteUrl =
         'https://foo.bar.example.com/gitddb-plugin/sync-test-invalid.git';
 
-      await createGitRemote(dbA.workingDir, remoteUrl);
+      await createGitRemote(dbA.workingDir, remoteUrl, 'origin');
 
       const err = await fetch(dbA.workingDir, { remoteUrl }).catch(
         (error) => error
@@ -320,7 +377,7 @@ maybe('<remote-nodegit> fetch', () => {
       await dbA.open();
 
       const remoteUrl = 'https://127.0.0.1/gitddb-plugin/sync-test-invalid.git';
-      await createGitRemote(dbA.workingDir, remoteUrl);
+      await createGitRemote(dbA.workingDir, remoteUrl, 'origin');
 
       const err = await fetch(dbA.workingDir, {
         remoteUrl,
@@ -343,7 +400,7 @@ maybe('<remote-nodegit> fetch', () => {
       await dbA.open();
 
       const remoteUrl = 'git@foo.example.com:bar/sync-test.git';
-      await createGitRemote(dbA.workingDir, remoteUrl);
+      await createGitRemote(dbA.workingDir, remoteUrl, 'origin');
 
       const err = await fetch(dbA.workingDir, {
         remoteUrl,
@@ -372,7 +429,7 @@ maybe('<remote-nodegit> fetch', () => {
 
       const remoteUrl = remoteURLBase + 'test-private.git';
 
-      await createGitRemote(dbA.workingDir, remoteUrl);
+      await createGitRemote(dbA.workingDir, remoteUrl, 'origin');
 
       const err = await fetch(dbA.workingDir, {
         remoteUrl,
@@ -395,7 +452,7 @@ maybe('<remote-nodegit> fetch', () => {
       await dbA.open();
 
       const remoteUrl = remoteURLBase + 'test-private.git';
-      await createGitRemote(dbA.workingDir, remoteUrl);
+      await createGitRemote(dbA.workingDir, remoteUrl, 'origin');
 
       let err;
       for (let i = 0; i < 3; i++) {
@@ -436,7 +493,7 @@ maybe('<remote-nodegit> fetch', () => {
 
       const remoteUrl = remoteURLBase + 'test-private.git';
 
-      await createGitRemote(dbA.workingDir, remoteUrl);
+      await createGitRemote(dbA.workingDir, remoteUrl, 'origin');
 
       const err = await fetch(dbA.workingDir, { remoteUrl }).catch(
         (error) => error
@@ -459,7 +516,7 @@ maybe('<remote-nodegit> fetch', () => {
       // TODO: set SSH url for test
       const remoteUrl = 'git@github.com:xxxxxxxxxxxxxxxxxx/sync-test.git';
 
-      await createGitRemote(dbA.workingDir, remoteUrl);
+      await createGitRemote(dbA.workingDir, remoteUrl, 'origin');
 
       const err = await fetch(dbA.workingDir, {
         remoteUrl,
@@ -488,7 +545,7 @@ maybe('<remote-nodegit> fetch', () => {
       await dbA.open();
 
       const remoteUrl = remoteURLBase + 'test-private.git';
-      await createGitRemote(dbA.workingDir, remoteUrl);
+      await createGitRemote(dbA.workingDir, remoteUrl, 'origin');
 
       const err = await fetch(dbA.workingDir, {
         remoteUrl,
@@ -511,7 +568,7 @@ maybe('<remote-nodegit> fetch', () => {
       await dbA.open();
 
       const remoteUrl = remoteURLBase + 'test-private.git';
-      await createGitRemote(dbA.workingDir, remoteUrl);
+      await createGitRemote(dbA.workingDir, remoteUrl, 'origin');
 
       const err = await fetch(dbA.workingDir, {
         remoteUrl,
@@ -541,7 +598,7 @@ maybe('<remote-nodegit> fetch', () => {
       await dbA.open();
 
       const remoteUrl = remoteURLBase + 'sync-test-invalid.git';
-      await createGitRemote(dbA.workingDir, remoteUrl);
+      await createGitRemote(dbA.workingDir, remoteUrl, 'origin');
 
       const err = await fetch(dbA.workingDir, {
         remoteUrl,
@@ -575,7 +632,7 @@ maybe('<remote-nodegit> fetch', () => {
     await dbA.open();
 
     const remoteUrl = 'foo-bar';
-    await createGitRemote(dbA.workingDir, remoteUrl);
+    await createGitRemote(dbA.workingDir, remoteUrl, 'origin');
 
     const err = await fetch(dbA.workingDir, {
       remoteUrl,
@@ -597,7 +654,7 @@ maybe('<remote-nodegit> fetch', () => {
     await dbA.open();
 
     const remoteUrl = remoteURLBase + 'foo/bar/test.git';
-    await createGitRemote(dbA.workingDir, remoteUrl);
+    await createGitRemote(dbA.workingDir, remoteUrl, 'origin');
 
     await expect(
       fetch(dbA.workingDir, {
@@ -617,7 +674,7 @@ maybe('<remote-nodegit> fetch', () => {
     await dbA.open();
 
     const remoteUrl = 'git@github.com:xxxxxxxxxxxxxxxxxx/sync-test.git';
-    await createGitRemote(dbA.workingDir, remoteUrl);
+    await createGitRemote(dbA.workingDir, remoteUrl, 'origin');
 
     await expect(
       fetch(dbA.workingDir, {
@@ -642,7 +699,7 @@ maybe('<remote-nodegit> fetch', () => {
     await dbA.open();
 
     const remoteUrl = remoteURLBase + 'test-private.git';
-    await createGitRemote(dbA.workingDir, remoteUrl);
+    await createGitRemote(dbA.workingDir, remoteUrl, 'origin');
 
     await expect(
       // @ts-ignore
