@@ -283,7 +283,9 @@ export async function checkFetch(
 export async function fetch(
   workingDir: string,
   remoteOptions: RemoteOptions,
-  remoteName = 'origin',
+  remoteName?: string,
+  localBranchName?: string,
+  remoteBranchName?: string,
   logger?: Logger
 ): Promise<void> {
   logger ??= new Logger({
@@ -296,24 +298,42 @@ export async function fetch(
 
   logger.debug(`remote-nodegit: fetch: ${remoteOptions.remoteUrl}`);
 
+  remoteName ??= 'origin';
+  localBranchName ??= 'main';
+  remoteBranchName ??= 'main';
+
   const repos = await nodegit.Repository.open(workingDir);
+  const remote: nodegit.Remote = await repos
+    .getRemote(remoteName)
+    .catch((err) => {
+      if (/^remote '.+?' does not exist/.test(err.message)) {
+        throw new InvalidGitRemoteError(err.message);
+      }
+      throw err;
+    });
+
   const callbacks = createCredentialCallback(remoteOptions);
+
+  const localBranch = 'refs/heads/' + localBranchName;
+  const remoteBranch = 'refs/heads/' + remoteBranchName;
 
   remoteOptions.retry ??= NETWORK_RETRY;
   remoteOptions.retryInterval ??= NETWORK_RETRY_INTERVAL;
 
   for (let i = 0; i < remoteOptions.retry! + 1; i++) {
+    // default reflog message is 'fetch'
+    // https://libgit2.org/libgit2/#HEAD/group/remote/git_remote_fetch
+
+    // @ts-ignore
     // eslint-disable-next-line no-await-in-loop
-    const res = await repos
-      .fetch(remoteName, {
-        callbacks,
-      })
+    const res = await remote
+      .fetch([`${localBranch}:${remoteBranch}`], { callbacks }, 'fetch')
       .catch((err) => err);
     // It leaks memory if not cleanup
     repos.cleanup();
 
     let error;
-    if (res !== undefined && res !== null) {
+    if (typeof res !== 'number' && typeof res !== 'undefined') {
       error = res.message;
     }
     else {
