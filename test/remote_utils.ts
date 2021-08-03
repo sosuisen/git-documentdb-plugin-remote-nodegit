@@ -130,7 +130,7 @@ export const createRemoteRepository = async (remoteURL: string) => {
       console.debug(err);
     });
 };
-/*
+
 export const destroyRemoteRepository = async (remoteURL: string) => {
   await new RemoteRepository({
     remoteUrl: remoteURL,
@@ -140,12 +140,11 @@ export const destroyRemoteRepository = async (remoteURL: string) => {
     },
   })
     .destroy()
-    .catch(err => {
+    .catch((err) => {
       console.debug('Cannot delete: ' + remoteURL);
       console.debug(err);
     });
 };
-*/
 
 export async function removeRemoteRepositories(reposPrefix: string) {
   // Remove test repositories on remote

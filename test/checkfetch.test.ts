@@ -20,11 +20,13 @@ import {
   InvalidURLFormatError,
   NetworkError,
 } from 'git-documentdb-remote-errors';
-import { GitDocumentDB } from 'git-documentdb';
+import { ConnectionSettingsGitHub, GitDocumentDB, Sync } from 'git-documentdb';
 import sinon from 'sinon';
 import { checkFetch } from '../src/remote-nodegit';
 import {
   createGitRemote,
+  createRemoteRepository,
+  destroyRemoteRepository,
   destroyDBs,
   removeRemoteRepositories,
 } from './remote_utils';
@@ -98,11 +100,18 @@ maybe('<remote-nodegit> checkFetch', () => {
       await dbA.open();
 
       const remoteUrl = remoteURLBase + 'test-public.git';
-      await createGitRemote(dbA.workingDir, remoteUrl, 'origin');
-      const res = await checkFetch(dbA.workingDir, {
+      const remoteOptions = {
         remoteUrl,
-        connection: { type: 'github' },
-      }).catch((error) => error);
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+        connection: { type: 'github' } as ConnectionSettingsGitHub,
+      };
+      const sync = new Sync(dbA, remoteOptions);
+      await createGitRemote(dbA.workingDir, remoteUrl, sync.remoteName);
+      const res = await checkFetch(
+        dbA.workingDir,
+        remoteOptions,
+        sync.remoteName
+      ).catch((error) => error);
       expect(res).not.toBeInstanceOf(Error);
 
       await destroyDBs([dbA]);
@@ -116,11 +125,21 @@ maybe('<remote-nodegit> checkFetch', () => {
       await dbA.open();
 
       const remoteUrl = remoteURLBase + 'test-public.git';
-      await createGitRemote(dbA.workingDir, remoteUrl, 'origin');
-      const res = await checkFetch(dbA.workingDir, {
+      const remoteOptions = {
         remoteUrl,
-        connection: { type: 'github', personalAccessToken: token },
-      }).catch((error) => error);
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+        connection: {
+          type: 'github',
+          personalAccessToken: token,
+        } as ConnectionSettingsGitHub,
+      };
+      const sync = new Sync(dbA, remoteOptions);
+      await createGitRemote(dbA.workingDir, remoteUrl, sync.remoteName);
+      const res = await checkFetch(
+        dbA.workingDir,
+        remoteOptions,
+        sync.remoteName
+      ).catch((error) => error);
       expect(res).not.toBeInstanceOf(Error);
 
       await destroyDBs([dbA]);
@@ -134,11 +153,21 @@ maybe('<remote-nodegit> checkFetch', () => {
       await dbA.open();
 
       const remoteUrl = remoteURLBase + 'test-private.git';
-      await createGitRemote(dbA.workingDir, remoteUrl, 'origin');
-      const res = await checkFetch(dbA.workingDir, {
+      const remoteOptions = {
         remoteUrl,
-        connection: { type: 'github', personalAccessToken: token },
-      }).catch((error) => error);
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+        connection: {
+          type: 'github',
+          personalAccessToken: token,
+        } as ConnectionSettingsGitHub,
+      };
+      const sync = new Sync(dbA, remoteOptions);
+      await createGitRemote(dbA.workingDir, remoteUrl, sync.remoteName);
+      const res = await checkFetch(
+        dbA.workingDir,
+        remoteOptions,
+        sync.remoteName
+      ).catch((error) => error);
       expect(res).not.toBeInstanceOf(Error);
 
       await destroyDBs([dbA]);
@@ -152,7 +181,16 @@ maybe('<remote-nodegit> checkFetch', () => {
       await dbA.open();
 
       const remoteUrl = remoteURLBase + 'test-private.git';
-      await createGitRemote(dbA.workingDir, remoteUrl, 'origin');
+      const remoteOptions = {
+        remoteUrl,
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+        connection: {
+          type: 'github',
+          personalAccessToken: token,
+        } as ConnectionSettingsGitHub,
+      };
+      const sync = new Sync(dbA, remoteOptions);
+      await createGitRemote(dbA.workingDir, remoteUrl, sync.remoteName);
 
       let counter = 0;
       const stubOpen = sandbox.stub(nodegit.Repository, 'open');
@@ -176,13 +214,64 @@ maybe('<remote-nodegit> checkFetch', () => {
         return repos;
       });
 
-      const res = await checkFetch(dbA.workingDir, {
-        remoteUrl,
-        connection: { type: 'github', personalAccessToken: token },
-      }).catch((error) => error);
+      const res = await checkFetch(
+        dbA.workingDir,
+        remoteOptions,
+        sync.remoteName
+      ).catch((error) => error);
       expect(res).not.toBeInstanceOf(Error);
 
       expect(counter).toBe(4);
+
+      await destroyDBs([dbA]);
+    });
+
+    it('when fetch from multiple Sync instances', async () => {
+      const dbA: GitDocumentDB = new GitDocumentDB({
+        dbName: serialId(),
+        localDir,
+      });
+      await dbA.open();
+
+      const remoteUrl = remoteURLBase + 'test-public.git';
+      const remoteOptions = {
+        remoteUrl,
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+        connection: {
+          type: 'github',
+          personalAccessToken: token,
+        } as ConnectionSettingsGitHub,
+      };
+      const sync = new Sync(dbA, remoteOptions);
+      await createGitRemote(dbA.workingDir, remoteUrl, sync.remoteName);
+
+      const res = await checkFetch(
+        dbA.workingDir,
+        remoteOptions,
+        sync.remoteName
+      ).catch((error) => error);
+      expect(res).not.toBeInstanceOf(Error);
+
+      const remoteUrl2 = remoteURLBase + 'test-public2.git';
+      await destroyRemoteRepository(remoteUrl2);
+      await createRemoteRepository(remoteUrl2);
+      const remoteOptions2 = {
+        remoteUrl: remoteUrl2,
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+        connection: {
+          type: 'github',
+          personalAccessToken: token,
+        } as ConnectionSettingsGitHub,
+      };
+      const sync2 = new Sync(dbA, remoteOptions2);
+      await createGitRemote(dbA.workingDir, remoteUrl2, sync2.remoteName);
+
+      const res2 = await checkFetch(
+        dbA.workingDir,
+        remoteOptions2,
+        sync2.remoteName
+      ).catch((error) => error);
+      expect(res2).not.toBeInstanceOf(Error);
 
       await destroyDBs([dbA]);
     });
@@ -196,7 +285,16 @@ maybe('<remote-nodegit> checkFetch', () => {
     await dbA.open();
 
     const remoteUrl = remoteURLBase + 'test-private.git';
-    await createGitRemote(dbA.workingDir, remoteUrl, 'origin');
+    const remoteOptions = {
+      remoteUrl,
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+      connection: {
+        type: 'github',
+        personalAccessToken: token,
+      } as ConnectionSettingsGitHub,
+    };
+    const sync = new Sync(dbA, remoteOptions);
+    await createGitRemote(dbA.workingDir, remoteUrl, sync.remoteName);
 
     let counter = 0;
     const stubOpen = sandbox.stub(nodegit.Repository, 'open');
@@ -216,10 +314,11 @@ maybe('<remote-nodegit> checkFetch', () => {
       return repos;
     });
 
-    const res = await checkFetch(dbA.workingDir, {
-      remoteUrl,
-      connection: { type: 'github', personalAccessToken: token },
-    }).catch((error) => error);
+    const res = await checkFetch(
+      dbA.workingDir,
+      remoteOptions,
+      sync.remoteName
+    ).catch((error) => error);
     expect(res).toBeInstanceOf(NetworkError);
 
     expect(counter).toBe(4);
