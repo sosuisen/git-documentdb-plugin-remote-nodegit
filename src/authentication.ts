@@ -90,11 +90,14 @@ function createCredentialForSSH(options: RemoteOptions) {
 /**
  * Create credential options
  *
- * @throws {@link InvalidURLFormatError} (from createCredentialForGitHub)
- * @throws {@link InvalidRepositoryURLError} (from createCredentialForGitHub)
- * @throws {@link InvalidSSHKeyPathError} (from createCredentialForSSH)
- *
  * @throws {@link InvalidAuthenticationTypeError}
+ *
+ * @throws # Error from createCredentialForGitHub
+ * @throws - {@link InvalidURLFormatError}
+ * @throws - {@link InvalidRepositoryURLError}
+ *
+ * @throws # Error from createCredentialForSSH
+ * @throws - {@link InvalidSSHKeyPathError}
  *
  * @internal
  */

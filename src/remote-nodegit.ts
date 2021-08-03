@@ -399,14 +399,19 @@ function calcDistance(
  * @throws {@link HTTPError403Forbidden}
  * @throws {@link CannotConnectError}
  *
- * @throws {@link UnfetchedCommitExistsError} (from validatePushResult())
- * @throws {@link CannotConnectError} (from validatePushResult())
+ * @throws # Errors from validatePushResult
+ * @throws - {@link UnfetchedCommitExistsError}
+ * @throws - {@link CannotConnectError}
  *
- * @throws {@link HttpProtocolRequiredError} (from createCredentialForGitHub)
- * @throws {@link InvalidRepositoryURLError} (from createCredentialForGitHub)
- * @throws {@link InvalidSSHKeyPathError} (from createCredentialForSSH)
+ * @throws # Errors from createCredentialForGitHub
+ * @throws - {@link InvalidURLFormatError}
+ * @throws - {@link InvalidRepositoryURLError}
  *
- * @throws {@link InvalidAuthenticationTypeError} (from createCredential)
+ * @throws # Errors from createCredentialForSSH
+ * @throws - {@link InvalidSSHKeyPathError}
+ *
+ * @throws # Errors from createCredential
+ * @throws - {@link InvalidAuthenticationTypeError}
  *
  * @public
  */
