@@ -314,9 +314,6 @@ export async function fetch(
 
   const callbacks = createCredentialCallback(remoteOptions);
 
-  const localBranch = 'refs/heads/' + localBranchName;
-  const remoteBranch = 'refs/heads/' + remoteBranchName;
-
   remoteOptions.retry ??= NETWORK_RETRY;
   remoteOptions.retryInterval ??= NETWORK_RETRY_INTERVAL;
 
@@ -327,8 +324,17 @@ export async function fetch(
     // @ts-ignore
     // eslint-disable-next-line no-await-in-loop
     const res = await remote
-      .fetch([`${localBranch}:${remoteBranch}`], { callbacks }, 'fetch')
+      .fetch(
+        [
+          `+refs/heads/${localBranchName}:refs/remotes/${remoteName}/${remoteBranchName}`,
+        ],
+        { callbacks },
+        'Fetch from ' + remoteName
+      )
       .catch((err) => err);
+    // remote must be disconnected after remote.fetch()
+    // eslint-disable-next-line no-await-in-loop
+    await remote.disconnect();
     // It leaks memory if not cleanup
     repos.cleanup();
 
@@ -458,16 +464,13 @@ export async function push(
     });
   const callbacks = createCredentialCallback(remoteOptions);
 
-  const localBranch = 'refs/heads/' + localBranchName;
-  const remoteBranch = 'refs/heads/' + remoteBranchName;
-
   remoteOptions.retry ??= NETWORK_RETRY;
   remoteOptions.retryInterval ??= NETWORK_RETRY_INTERVAL;
 
   for (let i = 0; i < remoteOptions.retry! + 1; i++) {
     // eslint-disable-next-line no-await-in-loop
     const res = await remote
-      .push([`${localBranch}:${remoteBranch}`], {
+      .push([`refs/heads/${localBranchName}:refs/heads/${remoteBranchName}`], {
         callbacks,
       })
       .catch((err: Error) => {
@@ -484,7 +487,6 @@ export async function push(
         // It leaks memory if not cleanup
         repos.cleanup();
       });
-   console.log(res);
     let error = '';
     if (typeof res !== 'number' && typeof res !== 'undefined') {
       error = res.message;
@@ -570,16 +572,17 @@ async function validatePushResult(
   remoteBranchName: string,
   callbacks: RemoteCallbacks
 ): Promise<void> {
-  const localBranch = 'refs/heads/' + localBranchName;
-  const remoteBranch = 'refs/heads/' + remoteBranchName;
-
   for (let i = 0; i < remoteOptions.retry! + 1; i++) {
     // eslint-disable-next-line no-await-in-loop
     const error = await remote
-      .fetch([`${localBranch}:${remoteBranch}`], { callbacks, updateFetchhead: 1, }, 'fetch')
-//    const error = await repos
-//      .fetch(remoteName, { callbacks })
-.catch((err) => {
+      .fetch(
+        [
+          `+refs/heads/${localBranchName}:refs/remotes/${remoteName}/${remoteBranchName}`,
+        ],
+        { callbacks },
+        'Fetch from ' + remoteName
+      ) // This is OK
+      .catch((err) => {
         // push() already check errors except network errors.
         // So throw only network errors here.
         if (i >= remoteOptions.retry!) {
@@ -587,7 +590,9 @@ async function validatePushResult(
         }
         else return err;
       })
-      .finally(() => {
+      .finally(async () => {
+        // remote must be disconnected after remote.fetch()
+        await remote.disconnect();
         repos.cleanup();
       });
 
@@ -609,8 +614,6 @@ async function validatePushResult(
     dir: workingDir,
     ref: `refs/remotes/${remoteName}/${remoteBranchName}`,
   });
-  console.log(localCommitOid);
-  console.log(remoteCommitOid);
   const [baseCommitOid] = await git.findMergeBase({
     fs,
     dir: workingDir,

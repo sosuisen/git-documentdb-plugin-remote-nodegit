@@ -919,7 +919,7 @@ maybe('<remote-nodegit> push', () => {
       await destroyDBs([dbA, dbB]);
     });
 
-    it.only('Race condition of two push() calls throws UnfetchedCommitExistsError in validatePushResult', async () => {
+    it('Race condition of two push() calls throws UnfetchedCommitExistsError in validatePushResult', async () => {
       const remoteURL = remoteURLBase + serialId();
 
       const dbNameA = serialId();
@@ -947,9 +947,9 @@ maybe('<remote-nodegit> push', () => {
 
       const jsonB1 = { _id: '1', name: 'fromB' };
       await dbB.put(jsonB1);
-/*      
-//      await expect(
-await        Promise.all([
+
+      await expect(
+        Promise.all([
           push(
             dbA.workingDir,
             {
@@ -971,30 +971,9 @@ await        Promise.all([
             dbB.defaultBranch
           ),
         ])
-//      ).rejects.toThrowError(UnfetchedCommitExistsError);
-*/
-await Promise.all([push(
-  dbA.workingDir,
-  {
-    remoteUrl: syncA.remoteURL,
-    connection: { type: 'github', personalAccessToken: token },
-  },
-  syncA.remoteName,
-  dbA.defaultBranch,
-  dbA.defaultBranch
-),
-push(
-  dbB.workingDir,
-  {
-    remoteUrl: syncA.remoteURL,
-    connection: { type: 'github', personalAccessToken: token },
-  },
-  syncB.remoteName,
-  dbB.defaultBranch,
-  dbB.defaultBranch
-)]);
+      ).rejects.toThrowError(UnfetchedCommitExistsError);
 
-      //      await destroyDBs([dbA, dbB]);
+      await destroyDBs([dbA, dbB]);
     });
   });
 
