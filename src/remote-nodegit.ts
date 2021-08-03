@@ -484,6 +484,7 @@ export async function push(
         // It leaks memory if not cleanup
         repos.cleanup();
       });
+   console.log(res);
     let error = '';
     if (typeof res !== 'number' && typeof res !== 'undefined') {
       error = res.message;
@@ -539,9 +540,11 @@ export async function push(
 
   await validatePushResult(
     repos,
+    remote,
     remoteOptions,
     workingDir,
     remoteName,
+    localBranchName,
     remoteBranchName,
     callbacks
   );
@@ -559,19 +562,24 @@ export async function push(
  */
 async function validatePushResult(
   repos: nodegit.Repository,
+  remote: nodegit.Remote,
   remoteOptions: RemoteOptions,
   workingDir: string,
   remoteName: string,
+  localBranchName: string,
   remoteBranchName: string,
   callbacks: RemoteCallbacks
 ): Promise<void> {
+  const localBranch = 'refs/heads/' + localBranchName;
+  const remoteBranch = 'refs/heads/' + remoteBranchName;
+
   for (let i = 0; i < remoteOptions.retry! + 1; i++) {
     // eslint-disable-next-line no-await-in-loop
-    const error = await repos
-      .fetch(remoteName, {
-        callbacks,
-      })
-      .catch((err) => {
+    const error = await remote
+      .fetch([`${localBranch}:${remoteBranch}`], { callbacks, updateFetchhead: 1, }, 'fetch')
+//    const error = await repos
+//      .fetch(remoteName, { callbacks })
+.catch((err) => {
         // push() already check errors except network errors.
         // So throw only network errors here.
         if (i >= remoteOptions.retry!) {
@@ -582,6 +590,7 @@ async function validatePushResult(
       .finally(() => {
         repos.cleanup();
       });
+
     if (!(error instanceof Error)) {
       break;
     }
@@ -600,7 +609,8 @@ async function validatePushResult(
     dir: workingDir,
     ref: `refs/remotes/${remoteName}/${remoteBranchName}`,
   });
-
+  console.log(localCommitOid);
+  console.log(remoteCommitOid);
   const [baseCommitOid] = await git.findMergeBase({
     fs,
     dir: workingDir,

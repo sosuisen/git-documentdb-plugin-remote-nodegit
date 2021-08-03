@@ -55,7 +55,7 @@ before(() => {
 });
 
 after(() => {
-  fs.removeSync(path.resolve(localDir));
+//  fs.removeSync(path.resolve(localDir));
 });
 
 /**
@@ -110,7 +110,7 @@ maybe('<remote-nodegit> fetch', () => {
   });
 
   describe('succeeds', () => {
-    it('when connect to public repository with no personal access token', async () => {
+    it.only('when connect to public repository with no personal access token', async () => {
       const dbA: GitDocumentDB = new GitDocumentDB({
         dbName: serialId(),
         localDir,
@@ -135,7 +135,7 @@ maybe('<remote-nodegit> fetch', () => {
       ).catch((error) => error);
       expect(res).toBeUndefined();
 
-      await destroyDBs([dbA]);
+//      await destroyDBs([dbA]);
     });
 
     it('when connect to public repository with valid personal access token', async () => {
