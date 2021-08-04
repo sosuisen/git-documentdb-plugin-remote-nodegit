@@ -26,8 +26,8 @@ import { checkFetch } from '../src/remote-nodegit';
 import {
   createGitRemote,
   createRemoteRepository,
-  destroyRemoteRepository,
   destroyDBs,
+  destroyRemoteRepository,
   removeRemoteRepositories,
 } from './remote_utils';
 

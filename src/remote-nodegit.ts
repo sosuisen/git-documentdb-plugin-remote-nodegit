@@ -482,7 +482,8 @@ export async function push(
         if (
           err.message.startsWith(
             'cannot push because a reference that you are trying to update on the remote contains commits that are not present locally'
-          )
+          ) ||
+          err.message.startsWith('cannot push non-fastforwardable reference')
         ) {
           throw new UnfetchedCommitExistsError();
         }
