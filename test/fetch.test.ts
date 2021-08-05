@@ -8,7 +8,8 @@
  */
 
 import path from 'path';
-import nodegit from 'nodegit';
+// @ts-ignore
+import nodegit from '@sosuisen/nodegit';
 import fs from 'fs-extra';
 import expect from 'expect';
 import {

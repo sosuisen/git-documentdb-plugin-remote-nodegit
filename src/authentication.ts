@@ -6,8 +6,9 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
-import nodegit from 'nodegit';
-import fs from 'fs-extra';
+import fs from 'fs';
+// @ts-ignore
+import nodegit from '@sosuisen/nodegit';
 import {
   InvalidAuthenticationTypeError,
   InvalidRepositoryURLError,

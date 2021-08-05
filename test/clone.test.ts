@@ -9,7 +9,8 @@
 
 import path from 'path';
 import fs from 'fs-extra';
-import nodegit from 'nodegit';
+// @ts-ignore
+import nodegit from '@sosuisen/nodegit';
 import expect from 'expect';
 import {
   HTTPError401AuthorizationRequired,

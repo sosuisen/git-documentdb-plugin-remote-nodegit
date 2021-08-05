@@ -7,7 +7,8 @@
  */
 
 import fs from 'fs';
-import nodegit, { RemoteCallbacks } from 'nodegit';
+// @ts-ignore
+import nodegit, { RemoteCallbacks } from '@sosuisen/nodegit';
 import git from 'isomorphic-git';
 import { Logger } from 'tslog';
 import {
@@ -89,7 +90,7 @@ export async function clone(
           callbacks: createCredentialCallback(remoteOptions),
         },
       }
-    ).catch((err) => err);
+    ).catch((err: Error) => err);
 
     let error = '';
     if (res instanceof Error) {
@@ -193,7 +194,7 @@ export async function checkFetch(
 
   const remote: nodegit.Remote = await repos
     .getRemote(remoteName)
-    .catch((err) => {
+    .catch((err: Error) => {
       if (/^remote '.+?' does not exist/.test(err.message)) {
         throw new InvalidGitRemoteError(err.message);
       }
@@ -208,7 +209,7 @@ export async function checkFetch(
       // eslint-disable-next-line no-await-in-loop
       await remote
         .connect(nodegit.Enums.DIRECTION.FETCH, callbacks)
-        .catch((err) => err)
+        .catch((err: Error) => err)
     );
     // eslint-disable-next-line no-await-in-loop
     await remote.disconnect();
@@ -305,7 +306,7 @@ export async function fetch(
   const repos = await nodegit.Repository.open(workingDir);
   const remote: nodegit.Remote = await repos
     .getRemote(remoteName)
-    .catch((err) => {
+    .catch((err: Error) => {
       if (/^remote '.+?' does not exist/.test(err.message)) {
         throw new InvalidGitRemoteError(err.message);
       }
@@ -331,7 +332,7 @@ export async function fetch(
         { callbacks },
         'Fetch from ' + remoteName
       )
-      .catch((err) => err);
+      .catch((err: Error) => err);
     // remote must be disconnected after remote.fetch()
     // eslint-disable-next-line no-await-in-loop
     await remote.disconnect();
@@ -461,7 +462,7 @@ export async function push(
   const repos = await nodegit.Repository.open(workingDir);
   const remote: nodegit.Remote = await repos
     .getRemote(remoteName)
-    .catch((err) => {
+    .catch((err: Error) => {
       if (/^remote '.+?' does not exist/.test(err.message)) {
         throw new InvalidGitRemoteError(err.message);
       }
@@ -588,7 +589,7 @@ async function validatePushResult(
         { callbacks },
         'Fetch from ' + remoteName
       ) // This is OK
-      .catch((err) => {
+      .catch((err: Error) => {
         // push() already check errors except network errors.
         // So throw only network errors here.
         if (i >= remoteOptions.retry!) {
