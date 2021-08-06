@@ -378,9 +378,16 @@ maybe('<remote-nodegit> checkFetch', () => {
         (error) => error
       );
       expect(err).toBeInstanceOf(NetworkError);
-      expect(err.message).toMatch(
-        /^Network error: Error: failed to send request/
-      );
+      if (process.platform === 'win32') {
+        expect(err.message).toMatch(
+          /^Network error: Error: failed to send request/
+        );
+      }
+      else {
+        expect(err.message).toMatch(
+          /^Network error: Error: failed to resolve address/
+        );
+      }
 
       await destroyDBs([dbA]);
     });
@@ -401,9 +408,14 @@ maybe('<remote-nodegit> checkFetch', () => {
         },
       }).catch((error) => error);
       expect(err).toBeInstanceOf(NetworkError);
-      expect(err.message).toMatch(
-        /^Network error: Error: failed to send request/
-      );
+      if (process.platform === 'win32') {
+        expect(err.message).toMatch(
+          /^Network error: Error: failed to send request/
+        );
+      }
+      else {
+        expect(err.message).toMatch(/^Network error: Error: failed to connect/);
+      }
 
       await destroyDBs([dbA]);
     });
@@ -452,9 +464,16 @@ maybe('<remote-nodegit> checkFetch', () => {
       }).catch((error) => error);
 
       expect(err).toBeInstanceOf(HTTPError401AuthorizationRequired);
-      expect(err.message).toMatch(
-        /^HTTP Error: 401 Authorization required: Error: request failed with status code: 401/
-      );
+      if (process.platform === 'win32') {
+        expect(err.message).toMatch(
+          /^HTTP Error: 401 Authorization required: Error: request failed with status code: 401/
+        );
+      }
+      else {
+        expect(err.message).toMatch(
+          /^HTTP Error: 401 Authorization required: Error: remote authentication required but no callback set/
+        );
+      }
 
       await destroyDBs([dbA]);
     });
@@ -492,7 +511,7 @@ maybe('<remote-nodegit> checkFetch', () => {
       }
       else {
         expect(err.message).toMatch(
-          /^HTTP Error: 401 Authorization required: Error: unexpected HTTP status code: 401/
+          /^HTTP Error: 401 Authorization required: Error: remote authentication required but no callback set/
         );
       }
 
@@ -593,9 +612,16 @@ maybe('<remote-nodegit> checkFetch', () => {
       }).catch((error) => error);
 
       expect(err).toBeInstanceOf(HTTPError401AuthorizationRequired);
-      expect(err.message).toMatch(
-        /^HTTP Error: 401 Authorization required: Error: too many redirects or authentication replays/
-      );
+      if (process.platform === 'win32') {
+        expect(err.message).toMatch(
+          /^HTTP Error: 401 Authorization required: Error: too many redirects or authentication replays/
+        );
+      }
+      else {
+        expect(err.message).toMatch(
+          /^HTTP Error: 401 Authorization required: Error: could not find appropriate mechanism for credentials/
+        );
+      }
 
       await destroyDBs([dbA]);
     });
@@ -623,7 +649,7 @@ maybe('<remote-nodegit> checkFetch', () => {
       }
       else {
         expect(err.message).toMatch(
-          /^HTTP Error: 404 Not Found: unexpected HTTP status code: 404/
+          /^HTTP Error: 404 Not Found: Error: unexpected http status code: 404/
         );
       }
 

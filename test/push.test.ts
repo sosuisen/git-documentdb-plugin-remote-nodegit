@@ -79,6 +79,9 @@ after(() => {
  *   GITDDB_PERSONAL_ACCESS_TOKEN: The personal access token of your GitHub account
  * GitHub repositories:
  *   remoteURLBase + 'test-private.git' must be a private repository.
+ * SSH keys
+ *   userHome/.ssh/invalid-test.pub: invalid public key
+ *   userHome/.ssh/invalid-test: invalid private key
  */
 const userHome =
   process.env[process.platform === 'win32' ? 'USERPROFILE' : 'HOME'] ?? '';
@@ -527,7 +530,14 @@ maybe('<remote-nodegit> push', () => {
       }).catch((error) => error);
 
       expect(err).toBeInstanceOf(NetworkError);
-      expect(err.message).toMatch(/^Network error: failed to send request/);
+      if (process.platform === 'win32') {
+        expect(err.message).toMatch(/^Network error: failed to send request/);
+      }
+      else {
+        expect(err.message).toMatch(
+          /^Network error: failed to resolve address/
+        );
+      }
 
       await destroyDBs([dbA]);
     });
@@ -550,7 +560,12 @@ maybe('<remote-nodegit> push', () => {
       }).catch((error) => error);
 
       expect(err).toBeInstanceOf(NetworkError);
-      expect(err.message).toMatch(/^Network error: failed to send request/);
+      if (process.platform === 'win32') {
+        expect(err.message).toMatch(/^Network error: failed to send request/);
+      }
+      else {
+        expect(err.message).toMatch(/^Network error: failed to connect/);
+      }
 
       await destroyDBs([dbA]);
     });
@@ -599,9 +614,16 @@ maybe('<remote-nodegit> push', () => {
       }).catch((error) => error);
 
       expect(err).toBeInstanceOf(HTTPError401AuthorizationRequired);
-      expect(err.message).toMatch(
-        /^HTTP Error: 401 Authorization required: request failed with status code: 401/
-      );
+      if (process.platform === 'win32') {
+        expect(err.message).toMatch(
+          /^HTTP Error: 401 Authorization required: request failed with status code: 401/
+        );
+      }
+      else {
+        expect(err.message).toMatch(
+          /^HTTP Error: 401 Authorization required: remote authentication required but no callback set/
+        );
+      }
 
       await destroyDBs([dbA]);
     });
@@ -636,7 +658,7 @@ maybe('<remote-nodegit> push', () => {
       }
       else {
         expect(err.message).toMatch(
-          /^HTTP Error: 401 Authorization required: unexpected HTTP status code: 401/
+          /^HTTP Error: 401 Authorization required: remote authentication required but no callback set/
         );
       }
 
@@ -739,9 +761,16 @@ maybe('<remote-nodegit> push', () => {
       }).catch((error) => error);
 
       expect(err).toBeInstanceOf(HTTPError401AuthorizationRequired);
-      expect(err.message).toMatch(
-        /^HTTP Error: 401 Authorization required: too many redirects or authentication replays/
-      );
+      if (process.platform === 'win32') {
+        expect(err.message).toMatch(
+          /^HTTP Error: 401 Authorization required: too many redirects or authentication replays/
+        );
+      }
+      else {
+        expect(err.message).toMatch(
+          /^HTTP Error: 401 Authorization required: could not find appropriate mechanism for credentials/
+        );
+      }
 
       await destroyDBs([dbA]);
     });
@@ -770,7 +799,7 @@ maybe('<remote-nodegit> push', () => {
       }
       else {
         expect(err.message).toMatch(
-          /^HTTP Error: 404 Not Found: unexpected HTTP status code: 404/
+          /^HTTP Error: 404 Not Found: unexpected http status code: 404/
         );
       }
 
@@ -892,7 +921,7 @@ maybe('<remote-nodegit> push', () => {
       }
       else {
         expect(err.message).toMatch(
-          /^HTTP Error: 403 Forbidden: unexpected HTTP status code: 403/
+          /^HTTP Error: 403 Forbidden: unexpected http status code: 403/
         );
       }
 
