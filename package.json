@@ -5,6 +5,10 @@
   "main": "dist/main.js",
   "types": "dist/main.d.ts",
   "scripts": {
+
+    "!! CAUTION !! ": "Don't publish this project on Windows. It drops the execution bit of configure file in native code.",
+    "!! CAUTION !!!": "Please npm publish on Linux",
+
     "build": "rm -rf dist/* && npm run lint && tsc --project src/tsconfig.json",
     "mocha": "npm run rm-test-db && npx cross-env TS_NODE_FILES=true TS_NODE_PROJECT=tsconfig.mocha.json mocha",
     "mocha-unit": "npm run rm-test-db && npx cross-env TS_NODE_FILES=true TS_NODE_PROJECT=tsconfig.mocha.json mocha --retries 0 --no-parallel",
