@@ -100,7 +100,8 @@ export async function clone(
       break;
     }
 
-    // if (error !== 'undefined') console.warn('connect fetch error: ' + error);
+    // console.log('# error: ' + error);
+
     switch (true) {
       case error.startsWith('unsupported URL protocol'):
       case error.startsWith('malformed URL'):
@@ -109,6 +110,7 @@ export async function clone(
       // NodeGit throws them when network is limited.
       case error.startsWith('failed to send request'):
       case error.startsWith('failed to resolve address'):
+      case error.startsWith('failed to connect'): // Ubuntu
         if (i >= remoteOptions.retry!) {
           throw new NetworkError(error);
         }
@@ -116,6 +118,12 @@ export async function clone(
 
       case error.startsWith('unexpected HTTP status code: 401'): // 401 on Ubuntu
       case error.startsWith('request failed with status code: 401'): // 401 on Windows
+      case error.startsWith(
+        'remote authentication required but no callback set'
+      ): // Ubuntu
+      case error.startsWith(
+        'could not find appropriate mechanism for credentials'
+      ): // Ubuntu
       case error.startsWith('Method connect has thrown an error'):
       case error.startsWith(
         'remote credential provider returned an invalid cred type'
@@ -126,7 +134,7 @@ export async function clone(
       case error.startsWith('too many redirects or authentication replays'):
         throw new HTTPError401AuthorizationRequired(error);
 
-      case error.startsWith('unexpected HTTP status code: 404'): // 404 on Ubuntu
+      case error.startsWith('unexpected http status code: 404'): // 404 on Ubuntu
       case error.startsWith('request failed with status code: 404'): // 404 on Windows
         throw new HTTPError404NotFound(error);
 
@@ -218,7 +226,8 @@ export async function checkFetch(
       break;
     }
 
-    // if (error !== 'undefined') console.warn('connect fetch error: ' + error);
+    console.log('# error: ' + error);
+
     switch (true) {
       case error.startsWith('Error: unsupported URL protocol'):
       case error.startsWith('Error: malformed URL'):
@@ -227,6 +236,7 @@ export async function checkFetch(
       // NodeGit throws them when network is limited.
       case error.startsWith('Error: failed to send request'):
       case error.startsWith('Error: failed to resolve address'):
+      case error.startsWith('Error: failed to connect'): // Ubuntu
         if (i >= remoteOptions.retry!) {
           throw new NetworkError(error);
         }
@@ -234,6 +244,12 @@ export async function checkFetch(
 
       case error.startsWith('Error: unexpected HTTP status code: 401'): // 401 on Ubuntu
       case error.startsWith('Error: request failed with status code: 401'): // 401 on Windows
+      case error.startsWith(
+        'Error: remote authentication required but no callback set'
+      ): // Ubuntu
+      case error.startsWith(
+        'Error: could not find appropriate mechanism for credentials'
+      ): // Ubuntu
       case error.startsWith('Error: Method connect has thrown an error'):
       case error.startsWith(
         'Error: remote credential provider returned an invalid cred type'
@@ -246,7 +262,7 @@ export async function checkFetch(
       ):
         throw new HTTPError401AuthorizationRequired(error);
 
-      case error.startsWith('Error: unexpected HTTP status code: 404'): // 404 on Ubuntu
+      case error.startsWith('Error: unexpected http status code: 404'): // 404 on Ubuntu
       case error.startsWith('Error: request failed with status code: 404'): // 404 on Windows
         throw new HTTPError404NotFound(error);
 
@@ -359,6 +375,7 @@ export async function fetch(
       // NodeGit throws them when network is limited.
       case error.startsWith('failed to send request'):
       case error.startsWith('failed to resolve address'):
+      case error.startsWith('failed to connect'): // Ubuntu
         if (i >= remoteOptions.retry!) {
           throw new NetworkError(error);
         }
@@ -366,6 +383,12 @@ export async function fetch(
 
       case error.startsWith('unexpected HTTP status code: 401'): // 401 on Ubuntu
       case error.startsWith('request failed with status code: 401'): // 401 on Windows
+      case error.startsWith(
+        'remote authentication required but no callback set'
+      ): // Ubuntu
+      case error.startsWith(
+        'could not find appropriate mechanism for credentials'
+      ): // Ubuntu
       case error.startsWith('Method connect has thrown an error'):
       case error.startsWith(
         'remote credential provider returned an invalid cred type'
@@ -376,7 +399,7 @@ export async function fetch(
       case error.startsWith('too many redirects or authentication replays'):
         throw new HTTPError401AuthorizationRequired(error);
 
-      case error.startsWith('unexpected HTTP status code: 404'): // 404 on Ubuntu
+      case error.startsWith('unexpected http status code: 404'): // 404 on Ubuntu
       case error.startsWith('request failed with status code: 404'): // 404 on Windows
         throw new HTTPError404NotFound(error);
 
@@ -511,6 +534,7 @@ export async function push(
       // NodeGit throws them when network is limited.
       case error.startsWith('failed to send request'):
       case error.startsWith('failed to resolve address'):
+      case error.startsWith('failed to connect'): // Ubuntu
         if (i >= remoteOptions.retry!) {
           throw new NetworkError(error);
         }
@@ -518,6 +542,12 @@ export async function push(
 
       case error.startsWith('unexpected HTTP status code: 401'): // 401 on Ubuntu
       case error.startsWith('request failed with status code: 401'): // 401 on Windows
+      case error.startsWith(
+        'remote authentication required but no callback set'
+      ): // Ubuntu
+      case error.startsWith(
+        'could not find appropriate mechanism for credentials'
+      ): // Ubuntu
       case error.startsWith('Method connect has thrown an error'):
       case error.startsWith(
         'remote credential provider returned an invalid cred type'
@@ -528,11 +558,11 @@ export async function push(
       case error.startsWith('too many redirects or authentication replays'):
         throw new HTTPError401AuthorizationRequired(error);
 
-      case error.startsWith('unexpected HTTP status code: 404'): // 404 on Ubuntu
+      case error.startsWith('unexpected http status code: 404'): // 404 on Ubuntu
       case error.startsWith('request failed with status code: 404'): // 404 on Windows
         throw new HTTPError404NotFound(error);
 
-      case error.startsWith('unexpected HTTP status code: 403'): // 403 on Ubuntu
+      case error.startsWith('unexpected http status code: 403'): // 403 on Ubuntu
       case error.startsWith('request failed with status code: 403'): // 403 on Windows
       case error.startsWith('Error: ERROR: Permission to'): {
         throw new HTTPError403Forbidden(error);
